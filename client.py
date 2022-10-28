@@ -1,5 +1,4 @@
 import os
-from pydoc import cli
 import socket
 import sys
 from datetime import datetime
@@ -30,7 +29,7 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                if property_ls[1] <= 1024:
+                if property_ls[1] < 1024:
                     sys.exit(2)
 
             elif property_ls[0] == "send_path":

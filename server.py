@@ -38,10 +38,10 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                if property_ls[1] <= 1024:
+                if property_ls[1] < 1024:
                     sys.exit(2)
 
-            elif property_ls[0] == "inbox_path":
+            if property_ls[0] == "inbox_path":
                 inbox_path_given = True
                 if not os.path.exists(property_ls[1].strip('/')):
                     sys.exit(2)
@@ -57,7 +57,10 @@ def read_config() -> tuple:
 def setup_server_connection(server_port: int) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(("127.0.0.1", server_port))
+    try:
+        s.bind(("127.0.0.1", server_port))
+    except OSError:
+        sys.exit(2)
     s.listen(1)
     return s
 
@@ -70,16 +73,16 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     
 
 def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) == 1 and parameters[0] == "127.0.0.1":
+    if len(parameters) != 1 or parameters[0] != "127.0.0.1":
+        server_respond(client_sock, CODE501)
+        return 1
+    else:
         ip = parameters[0]
         sys.stdout.write(f"S: 250 {ip}\nS: 250 AUTH CRAM-MD5\r\n")
         sys.stdout.flush()
         msg = f"250 {ip}\r\n250 AUTH CRAM-MD5\r\n"
         client_sock.send(msg.encode())
         return 3
-    else:
-        server_respond(client_sock, CODE501)
-        return 1
 
 
 def process_mail(client_sock: socket.socket, parameters: list) -> int:
@@ -148,8 +151,9 @@ def process_quit(client_sock: socket.socket, parameters: list, current_state: in
 
 
 def main():
-    server_port = read_config()[0]
-    inbox_path = read_config()[1]
+    config_info = read_config()
+    server_port = config_info[0]
+    inbox_path = config_info[1]
 
     server_sock = setup_server_connection(server_port)
     client_sock, address = server_sock.accept()
