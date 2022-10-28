@@ -91,13 +91,13 @@ def receive_msg_from_server(client_sock: socket.socket) -> int:
     msg_ls = msg.split("\r\n")
     msg_ls.pop(-1)
     for line in msg_ls:
-        sys.stdout.write(f"S: {line}\n")
+        sys.stdout.write(f"S: {line}\r\n")
         sys.stdout.flush()
     return int(msg.split()[0])
 
 
 def print_then_send_to_server(client_sock: socket.socket, msg) -> None:
-    sys.stdout.write(f"C: {msg}\n")
+    sys.stdout.write(f"C: {msg}\r\n")
     sys.stdout.flush()
     msg += "\r\n"
     client_sock.send(msg.encode())

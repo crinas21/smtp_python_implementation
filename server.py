@@ -63,7 +63,7 @@ def setup_server_connection(server_port: int) -> socket.socket:
 
 
 def server_respond(client_sock: socket.socket, response: str) -> None:
-    sys.stdout.write(f"S: {response}\n")
+    sys.stdout.write(f"S: {response}\r\n")
     sys.stdout.flush()
     response += "\r\n"
     client_sock.send(response.encode())
@@ -72,7 +72,7 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
 def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
     if len(parameters) == 1 and parameters[0] == "127.0.0.1":
         ip = parameters[0]
-        sys.stdout.write(f"S: 250 {ip}\nS: 250 AUTH CRAM-MD5\n")
+        sys.stdout.write(f"S: 250 {ip}\nS: 250 AUTH CRAM-MD5\r\n")
         sys.stdout.flush()
         msg = f"250 {ip}\r\n250 AUTH CRAM-MD5\r\n"
         client_sock.send(msg.encode())
@@ -110,12 +110,12 @@ def process_data(client_sock: socket.socket, parameters: list) -> int:
         server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
         msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
         while msg_from_client != ".":
-            sys.stdout.write(f"C: {msg_from_client}\n")
+            sys.stdout.write(f"C: {msg_from_client}\r\n")
             sys.stdout.flush()
             server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
             msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
 
-        sys.stdout.write(f"C: {msg_from_client}\n")
+        sys.stdout.write(f"C: {msg_from_client}\r\n")
         sys.stdout.flush()
         server_respond(client_sock, "250 Requested mail action okay completed")
         return 3
@@ -161,7 +161,7 @@ def main():
             
         command = msg_from_client.split()[0]
         parameters = msg_from_client.split()[1:]
-        sys.stdout.write(f"C: {msg_from_client}\n")
+        sys.stdout.write(f"C: {msg_from_client}\r\n")
         sys.stdout.flush()
 
         if command == "EHLO":
