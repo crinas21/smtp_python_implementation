@@ -46,28 +46,6 @@ def read_config() -> tuple:
     return (properties.get("server_port"), properties.get("send_path"))
 
 
-def get_emails_to_send(send_path: str) -> tuple:
-    # Recursively get the paths of all files contained in send_path
-    file_list = []
-    for root, _, filenames in os.walk(send_path):
-        for filename in filenames:
-            if not os.path.isfile(filename):
-                file_list.append(os.path.join(root, filename))
-
-    # Split each file's path
-    for i in range(len(file_list)):
-        file_list[i] = file_list[i].split('/')
-
-    # Sort the file list alphabetically by basename
-    file_list = sorted(file_list, key=lambda x:x[-1])
-
-    # Join the paths again
-    for i in range(len(file_list)):
-        file_list[i] = '/'.join(file_list[i])
-
-    return tuple(file_list)
-
-
 def setup_client_connection(server_port: int) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -85,22 +63,12 @@ def setup_client_connection(server_port: int) -> socket.socket:
     return s
 
 
-def receive_msg_from_server(client_sock: socket.socket) -> int:
-    msg = client_sock.recv(1024).decode()
+def write_msg_from_server(msg: str) -> None:
     msg_ls = msg.split("\r\n")
     msg_ls.pop(-1)
     for line in msg_ls:
-        sys.stdout.write(f"S: {line}\n")
+        sys.stdout.write(f"S: {line}\r\n")
         sys.stdout.flush()
-    return int(msg.split(" ")[0])
-
-
-def send_sender(client_sock: socket.socket, sender: str) -> None:
-    sender = sender.split()[1].rstrip('\n')
-    sys.stdout.write(f"C: MAIL FROM:{sender}\n")
-    sys.stdout.flush()
-    msg = f"MAIL FROM:{sender}\r\n"
-    client_sock.send(msg.encode())
 
 
 def main():
@@ -108,23 +76,14 @@ def main():
     server_port = config_info[0]
     send_path = config_info[1]
 
-    emails_to_send = get_emails_to_send(send_path)
-    print(emails_to_send)
-
     client_sock = setup_client_connection(server_port)
-    receive_msg_from_server(client_sock)
 
-    for email in emails_to_send:
-        fobj = open(email, "r")
-        contents = fobj.readlines()
-        fobj.close()
-        
-        send_sender(client_sock, contents[0])
-        receive_msg_from_server(client_sock)
-
-
-        # msg_to_server = input("C: ").rstrip('\n') + "\r\n"
-        # client_sock.send(msg_to_server.encode())
+    quit = False
+    while not quit:
+        msg_from_server = client_sock.recv(1024).decode()
+        write_msg_from_server(msg_from_server)
+        msg_to_server = input("C: ").rstrip('\n') + "\r\n"
+        client_sock.send(msg_to_server.encode())
 
 
 if __name__ == '__main__':
