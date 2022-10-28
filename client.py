@@ -29,18 +29,27 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                if property_ls[1] < 1024:
+                if property_ls[1] <= 1024:
                     sys.exit(2)
 
-            elif property_ls[0] == "send_path":
+            if property_ls[0] == "send_path":
                 send_path_given = True
                 property_ls[1] = property_ls[1].strip('/')
                 if not os.path.exists(property_ls[1]):
                     sys.exit(2)
 
+            if property_ls[0] == "client_port":
+                try:
+                    property_ls[1] = int(property_ls[1])
+                except ValueError:
+                    sys.exit(2)
+                if property_ls[1] <= 1024:
+                    sys.exit(2)
+
             properties.update({property_ls[0]: property_ls[1]})
         
-    if not server_port_given or not send_path_given:
+    if not server_port_given or not send_path_given or \
+            properties.get("server_port") == properties.get("client_port"):
         sys.exit(2)
 
     return (properties.get("server_port"), properties.get("send_path"))
