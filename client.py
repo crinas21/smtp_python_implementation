@@ -29,8 +29,8 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                if property_ls[1] <= 1024:
-                    sys.exit(2)
+                # if property_ls[1] <= 1024:
+                #     sys.exit(2)
 
             if property_ls[0] == "send_path":
                 send_path_given = True
@@ -43,8 +43,8 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                if property_ls[1] <= 1024:
-                    sys.exit(2)
+                # if property_ls[1] <= 1024:
+                #     sys.exit(2)
 
             properties.update({property_ls[0]: property_ls[1]})
         
@@ -83,7 +83,7 @@ def setup_client_connection(server_port: int) -> socket.socket:
     s.settimeout(10)
 
     try:
-        s.connect((socket.gethostname(), server_port))
+        s.connect(("127.0.0.1", server_port))
     except ConnectionRefusedError:
         print("C: Cannot establish connection")
         sys.exit(3)
