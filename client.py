@@ -83,7 +83,7 @@ def setup_client_connection(server_port: int) -> socket.socket:
     s.settimeout(10)
 
     try:
-        s.connect(("127.0.0.1", server_port))
+        s.connect((socket.gethostname(), server_port))
     except ConnectionRefusedError:
         print("C: Cannot establish connection")
         sys.exit(3)

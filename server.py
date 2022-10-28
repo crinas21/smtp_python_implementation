@@ -67,7 +67,7 @@ def setup_server_connection(server_port: int) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-        s.bind(("127.0.0.1", server_port))
+        s.bind((socket.gethostname(), server_port))
     except OSError:
         sys.exit(2)
     s.listen(1)
