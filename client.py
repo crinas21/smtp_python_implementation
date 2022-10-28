@@ -1,4 +1,5 @@
 import os
+from pydoc import cli
 import socket
 import sys
 from datetime import datetime
@@ -92,15 +93,36 @@ def receive_msg_from_server(client_sock: socket.socket) -> int:
     for line in msg_ls:
         sys.stdout.write(f"S: {line}\n")
         sys.stdout.flush()
-    return int(msg.split(" ")[0])
+    return int(msg.split()[0])
 
+
+def print_then_send_to_server(client_sock: socket.socket, msg) -> None:
+    sys.stdout.write(f"C: {msg}\n")
+    sys.stdout.flush()
+    msg += "\r\n"
+    client_sock.send(msg.encode())
+    receive_msg_from_server(client_sock)
 
 def send_sender(client_sock: socket.socket, sender: str) -> None:
     sender = sender.split()[1].rstrip('\n')
-    sys.stdout.write(f"C: MAIL FROM:{sender}\n")
-    sys.stdout.flush()
-    msg = f"MAIL FROM:{sender}\r\n"
-    client_sock.send(msg.encode())
+    msg = f"MAIL FROM:{sender}"
+    print_then_send_to_server(client_sock, msg)
+
+
+def send_recipients(client_sock: socket.socket, recipients: str) -> None:
+    recipients = recipients.split()[1].rstrip('\n').split(",")
+    for recipient in recipients:
+        msg = f"RCPT TO:{recipient}"
+        print_then_send_to_server(client_sock, msg)
+
+
+def send_data(client_sock: socket.socket, data: list) -> None:
+    print_then_send_to_server(client_sock, "DATA")
+    for i in range(len(data)):
+        data[i] = data[i].rstrip('\n')
+    for section in data:
+        print_then_send_to_server(client_sock, section)
+    print_then_send_to_server(client_sock, ".")
 
 
 def main():
@@ -109,22 +131,22 @@ def main():
     send_path = config_info[1]
 
     emails_to_send = get_emails_to_send(send_path)
-    print(emails_to_send)
 
     client_sock = setup_client_connection(server_port)
     receive_msg_from_server(client_sock)
+
+    print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
 
     for email in emails_to_send:
         fobj = open(email, "r")
         contents = fobj.readlines()
         fobj.close()
-        
+
         send_sender(client_sock, contents[0])
-        receive_msg_from_server(client_sock)
+        send_recipients(client_sock, contents[1])
+        send_data(client_sock, contents[2:])
 
-
-        # msg_to_server = input("C: ").rstrip('\n') + "\r\n"
-        # client_sock.send(msg_to_server.encode())
+    print_then_send_to_server(client_sock, "QUIT")
 
 
 if __name__ == '__main__':

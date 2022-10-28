@@ -10,7 +10,7 @@ PERSONAL_SECRET = 'ec3d3b986eec9b7ad74e06213350ebd3'
 CODE220 = "220 Service ready"
 CODE235 = "235 Authentication successful"
 CODE354 = "354 Start mail input end <CRLF>.<CRLF>"
-CODE500 = "500, Syntax error command unrecognized"
+CODE500 = "500 Syntax error command unrecognized"
 CODE501 = "501 Syntax error in parameters or arguments"
 CODE503 = "503 Bad sequence of commands"
 CODE504 = "504 Unrecognized authenticaion type"
@@ -65,15 +65,17 @@ def setup_server_connection(server_port: int) -> socket.socket:
 def server_respond(client_sock: socket.socket, response: str) -> None:
     sys.stdout.write(f"S: {response}\n")
     sys.stdout.flush()
-    response = response + "\r\n"
+    response += "\r\n"
     client_sock.send(response.encode())
     
 
 def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
-    if parameters[0] == "127.0.0.1\r\n":
-        sys.stdout.write(f"S: 250 127.0.0.1\nS: 250 AUTH CRAM-MD5\n")
+    if len(parameters) == 1 and parameters[0] == "127.0.0.1":
+        ip = parameters[0]
+        sys.stdout.write(f"S: 250 {ip}\nS: 250 AUTH CRAM-MD5\n")
         sys.stdout.flush()
-        client_sock.send(b"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n")
+        msg = f"250 {ip}\r\n250 AUTH CRAM-MD5\r\n"
+        client_sock.send(msg.encode())
         return 3
     else:
         server_respond(client_sock, CODE501)
@@ -81,9 +83,68 @@ def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
 
 
 def process_mail(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) > 1:
+    if len(parameters) > 1 or not (parameters[0].startswith("FROM:<") 
+                                    and parameters[0].endswith(">")):
         server_respond(client_sock, CODE501)
-    server_respond(client_sock, "250 Requested mail action okay completed")
+        return 3
+    else:
+        server_respond(client_sock, "250 Requested mail action okay completed")
+        return 9
+
+
+def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
+    if len(parameters) > 1 or not (parameters[0].startswith("TO:<") 
+                                    and parameters[0].endswith(">")):
+        server_respond(client_sock, CODE501)
+        return 9
+    else:
+        server_respond(client_sock, "250 Requested mail action okay completed")
+        return 11
+
+
+def process_data(client_sock: socket.socket, parameters: list) -> int:
+    if len(parameters) != 0:
+        server_respond(client_sock, CODE501)
+        return 11
+    else:
+        server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
+        msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
+        while msg_from_client != ".":
+            sys.stdout.write(f"C: {msg_from_client}\n")
+            sys.stdout.flush()
+            server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
+            msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
+
+        sys.stdout.write(f"C: {msg_from_client}\n")
+        sys.stdout.flush()
+        server_respond(client_sock, "250 Requested mail action okay completed")
+        return 3
+
+
+def process_rset(client_sock: socket.socket, parameters :list, current_state: int) -> int:
+    if len(parameters) != 0:
+        server_respond(client_sock, CODE501)
+        return current_state
+    else:
+        server_respond(client_sock, "250 Requested mail action okay completed")
+        return 3
+
+
+def process_noop(client_sock: socket.socket, parameters: list) -> None:
+    if len(parameters) != 0:
+        server_respond(client_sock, CODE501)
+    else:
+        server_respond(client_sock, "250 Requested mail action okay completed")
+
+
+def process_quit(client_sock: socket.socket, parameters: list, current_state: int) -> int:
+    if len(parameters) != 0:
+        server_respond(client_sock, CODE501)
+        return current_state
+    else:
+        server_respond(client_sock, "221 Service closing transmission channel")
+        client_sock.close()
+        return 7
 
 
 def main():
@@ -95,32 +156,46 @@ def main():
     server_respond(client_sock, CODE220)
     server_state = 1
     
-    sigint = False
-    while not sigint:
-        msg_from_client = client_sock.recv(1024).decode()
-        if len(msg_from_client) != 0:
-            command = msg_from_client.split(' ')[0]
-            parameters = msg_from_client.split(' ')[1:]
-            sys.stdout.write(f"C: {msg_from_client}")
-            sys.stdout.flush()
+    while server_state != 7:
+        msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
+            
+        command = msg_from_client.split()[0]
+        parameters = msg_from_client.split()[1:]
+        sys.stdout.write(f"C: {msg_from_client}\n")
+        sys.stdout.flush()
 
-            if command == "EHLO":
-                server_state = process_ehlo(client_sock, parameters)
+        if command == "EHLO":
+            server_state = process_ehlo(client_sock, parameters)
 
-            elif command == "MAIL":
-                if server_state == 3:
-                    server_state = process_mail(client_sock, parameters)
-                else:
-                    server_respond(client_sock, CODE503)
-
-            elif command == "RCPT":
-                pass
-
-            elif command == "DATA":
-                pass
-
+        elif command == "MAIL":
+            if server_state == 3:
+                server_state = process_mail(client_sock, parameters)
             else:
-                server_respond(client_sock, CODE500)
+                server_respond(client_sock, CODE503)
+
+        elif command == "RCPT":
+            if server_state == 9 or server_state == 11:
+                server_state = process_rcpt(client_sock, parameters)
+            else:
+                server_respond(client_sock, CODE503)
+
+        elif command == "DATA":
+            if server_state == 11:
+                server_state = process_data(client_sock, parameters)
+            else:
+                server_respond(client_sock, CODE503)
+
+        elif command == "RSET":
+            server_state = process_rset(client_sock, parameters, server_state)
+
+        elif command == "NOOP":
+            process_noop(client_sock, parameters)
+
+        elif command == "QUIT":
+            server_state = process_quit(client_sock, parameters, server_state)
+
+        else:
+            server_respond(client_sock, CODE500)
 
 
 if __name__ == '__main__':
