@@ -33,18 +33,19 @@ def read_config() -> tuple:
             property_ls = property.split("=")
 
             if property_ls[0] == "server_port":
-                server_port_given = True
-                try:
-                    property_ls[1] = int(property_ls[1])
-                except ValueError:
-                    sys.exit(2)
+                # server_port_given = True
+                # try:
+                #     property_ls[1] = int(property_ls[1])
+                # except ValueError:
+                #     sys.exit(2)
+                property_ls[1] = int(property_ls[1])
                 # if property_ls[1] <= 1024:
                 #     sys.exit(2)
 
             if property_ls[0] == "inbox_path":
                 inbox_path_given = True
-                if not os.path.exists(property_ls[1].strip('/')):
-                    sys.exit(2)
+                # if not os.path.exists(property_ls[1].strip('/')):
+                #     sys.exit(2)
 
             if property_ls[0] == "client_port":
                 try:
