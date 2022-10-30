@@ -2,6 +2,17 @@ import os
 import socket
 import sys
 from datetime import datetime
+from dataclasses import dataclass
+from turtle import dot
+from xxlimited import Str
+
+
+@dataclass(frozen=True)
+class Email:
+    sender: str
+    recipients: tuple[str]
+    subject: str
+    body: str
 
 
 PERSONAL_ID = '166FB8'
@@ -77,42 +88,99 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     sys.stdout.flush()
     response += "\r\n"
     client_sock.send(response.encode())
+
+
+def valid_ip(ip: str) -> bool:
+    ip = ip.split(".")
+    if len(ip) != 4:
+        return False
+
+    for digit in ip:
+        try:
+            num = int(digit)
+        except ValueError:
+            return False
+    
+    return True
     
 
 def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
     if len(parameters) != 1:
         server_respond(client_sock, CODE501)
         return 1
+    
+    if not valid_ip(parameters[0]):
+        server_respond(client_sock, CODE501)
+        return 1
+
+    sys.stdout.write(f"S: 250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5\r\n")
+    sys.stdout.flush()
+    msg = f"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n"
+    client_sock.send(msg.encode())
+    return 3
+
+
+def valid_address(address: str) -> bool:
+    split_addr = address.split('@')
+    if len(split_addr) != 2:
+        return False
+
+    dot_string = split_addr[0]
+    dot_string_ls = list(dot_string)
+    for char in dot_string_ls:
+        if not (char.isalnum() or char == "-" or char == "."):
+            return False
+
+    domain = split_addr[1]
+    if domain[0] == "[" and domain[-1] == "]":
+        if not valid_ip(domain[1:-1]):
+            return False
     else:
-        sys.stdout.write(f"S: 250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5\r\n")
-        sys.stdout.flush()
-        msg = f"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n"
-        client_sock.send(msg.encode())
-        return 3
+        domain = domain.split(".")
+        if len(domain) != 2:
+            return False
+        for char in list(domain[0]):
+            if not (char.isalnum() or char == "-" or char == "."):
+                return False
+        for char in list(domain[1]):
+            if not (char.isalnum() or char == "-" or char == "."):
+                return False
+
+    return True
 
 
 def process_mail(client_sock: socket.socket, parameters: list) -> int:
     if len(parameters) != 1:
         server_respond(client_sock, CODE501)
         return 3
+
     if not (parameters[0].startswith("FROM:<") and parameters[0].endswith(">")):
         server_respond(client_sock, CODE501)
         return 3
-    else:
-        server_respond(client_sock, "250 Requested mail action okay completed")
-        return 9
+
+    if not valid_address(parameters[0][6:-1]):
+        server_respond(client_sock, CODE501)
+        return 3
+
+    server_respond(client_sock, "250 Requested mail action okay completed")
+    return 9
 
 
 def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
     if len(parameters) != 1:
         server_respond(client_sock, CODE501)
         return 9
+
     if not (parameters[0].startswith("TO:<") and parameters[0].endswith(">")):
         server_respond(client_sock, CODE501)
         return 9
-    else:
-        server_respond(client_sock, "250 Requested mail action okay completed")
-        return 11
+    
+    if not valid_address(parameters[0][4:-1]):
+        server_respond(client_sock, CODE501)
+        return 3
+
+    server_respond(client_sock, "250 Requested mail action okay completed")
+    return 11
 
 
 def process_data(client_sock: socket.socket, parameters: list) -> int:
