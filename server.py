@@ -134,10 +134,11 @@ def valid_address(address: str) -> bool:
     
 
 def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
-    if len(parameters) == 1:
+    if len(parameters) == 0:
         server_respond(client_sock, CODE501)
         return 1
     
+    parameters = parameters.lstrip()
     if not valid_ip(parameters):
         server_respond(client_sock, CODE501)
         return 1
@@ -154,11 +155,12 @@ def process_mail(client_sock: socket.socket, parameters: str) -> int:
         server_respond(client_sock, CODE501)
         return 3
 
-    if not (parameters.startswith("FROM:<") and parameters.endswith(">")):
+    from_user = parameters.lstrip()
+    if not (from_user.startswith("FROM:<") and from_user.endswith(">")):
         server_respond(client_sock, CODE501)
         return 3
 
-    if not valid_address(parameters[6:-1]):
+    if not valid_address(from_user[6:-1]):
         server_respond(client_sock, CODE501)
         return 3
 
@@ -171,11 +173,12 @@ def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
         server_respond(client_sock, CODE501)
         return 9
 
-    if not (parameters[0].startswith("TO:<") and parameters[0].endswith(">")):
+    to_user = parameters.lstrip()
+    if not (to_user.startswith("TO:<") and to_user.endswith(">")):
         server_respond(client_sock, CODE501)
         return 9
     
-    if not valid_address(parameters[4:-1]):
+    if not valid_address(to_user[4:-1]):
         server_respond(client_sock, CODE501)
         return 3
 
