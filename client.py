@@ -34,7 +34,6 @@ def read_config() -> tuple:
 
             if property_ls[0] == "send_path":
                 send_path_given = True
-                property_ls[1] = property_ls[1].strip('/')
 
             if property_ls[0] == "client_port":
                 try:
@@ -147,9 +146,13 @@ def main():
         receive_msg_from_server(client_sock)
         print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
 
-        fobj = open(email, "r")
-        contents = fobj.readlines()
-        fobj.close()
+        try:
+            fobj = open(email, "r")
+            contents = fobj.readlines()
+            fobj.close()
+        except Exception:
+            sys.stdout.write(f"C: {email}: Bad formation")
+            continue
 
         send_sender(client_sock, contents[0])
         send_recipients(client_sock, contents[1])

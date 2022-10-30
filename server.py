@@ -265,7 +265,11 @@ def main():
             server_respond(client_sock, CODE220)
             server_state = 1
 
-        msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
+        try:
+            msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
+        except BrokenPipeError:
+            sys.stdout.write("S: Connection lost\r\n")
+            sys.stdout.flush()
             
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
