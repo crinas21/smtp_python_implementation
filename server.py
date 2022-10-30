@@ -110,25 +110,39 @@ def valid_address(address: str) -> bool:
         return False
 
     dot_string = split_addr[0]
+
+    # Check dot string does not begin or end with "."
+    if dot_string[0] == "." or dot_string[-1] == ".":
+        return False
+
+    # Check if any sections separated by dots start with a "-"
+    split_dot_string = dot_string.split(".")
+    for st in split_dot_string:
+        if st[0] == "-":
+            return False
+
+    # Check all characters are alphanumeric or "-" or "."
     dot_string_ls = list(dot_string)
     for char in dot_string_ls:
         if not (char.isalnum() or char == "-" or char == "."):
             return False
 
     domain = split_addr[1]
-    if domain[0] == "[" and domain[-1] == "]":
+    if domain[0] == "[" and domain[-1] == "]": # If in square brackets, check if IPv4 address is valid
         if not valid_ip(domain[1:-1]):
             return False
     else:
-        domain = domain.split(".")
-        if len(domain) != 2:
+        if domain[0] == "." or domain[-1] == ".":
             return False
-        for char in list(domain[0]):
-            if not (char.isalnum() or char == "-" or char == "."):
+
+        domain = domain.split(".")
+        for d in domain:
+            d_ls = list(d)
+            if d_ls[0] == "-" or d_ls[-1] == "-":
                 return False
-        for char in list(domain[1]):
-            if not (char.isalnum() or char == "-" or char == "."):
-                return False
+            for char in d_ls:
+                if not (char.isalnum() or char == "-" or char == "."):
+                    return False
 
     return True
     
