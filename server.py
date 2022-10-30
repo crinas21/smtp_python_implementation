@@ -102,22 +102,6 @@ def valid_ip(ip: str) -> bool:
             return False
     
     return True
-    
-
-def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) != 1:
-        server_respond(client_sock, CODE501)
-        return 1
-    
-    if not valid_ip(parameters[0]):
-        server_respond(client_sock, CODE501)
-        return 1
-
-    sys.stdout.write(f"S: 250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5\r\n")
-    sys.stdout.flush()
-    msg = f"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n"
-    client_sock.send(msg.encode())
-    return 3
 
 
 def valid_address(address: str) -> bool:
@@ -147,18 +131,34 @@ def valid_address(address: str) -> bool:
                 return False
 
     return True
+    
+
+def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
+    if len(parameters) == 1:
+        server_respond(client_sock, CODE501)
+        return 1
+    
+    if not valid_ip(parameters):
+        server_respond(client_sock, CODE501)
+        return 1
+
+    sys.stdout.write(f"S: 250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5\r\n")
+    sys.stdout.flush()
+    msg = f"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n"
+    client_sock.send(msg.encode())
+    return 3
 
 
-def process_mail(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) != 1:
+def process_mail(client_sock: socket.socket, parameters: str) -> int:
+    if len(parameters) == 0:
         server_respond(client_sock, CODE501)
         return 3
 
-    if not (parameters[0].startswith("FROM:<") and parameters[0].endswith(">")):
+    if not (parameters.startswith("FROM:<") and parameters.endswith(">")):
         server_respond(client_sock, CODE501)
         return 3
 
-    if not valid_address(parameters[0][6:-1]):
+    if not valid_address(parameters[6:-1]):
         server_respond(client_sock, CODE501)
         return 3
 
@@ -166,8 +166,8 @@ def process_mail(client_sock: socket.socket, parameters: list) -> int:
     return 9
 
 
-def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) != 1:
+def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
+    if len(parameters) == 0:
         server_respond(client_sock, CODE501)
         return 9
 
@@ -175,7 +175,7 @@ def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
         server_respond(client_sock, CODE501)
         return 9
     
-    if not valid_address(parameters[0][4:-1]):
+    if not valid_address(parameters[4:-1]):
         server_respond(client_sock, CODE501)
         return 3
 
@@ -183,7 +183,7 @@ def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
     return 11
 
 
-def process_data(client_sock: socket.socket, parameters: list) -> int:
+def process_data(client_sock: socket.socket, parameters: str) -> int:
     if len(parameters) != 0:
         server_respond(client_sock, CODE501)
         return 11
@@ -202,7 +202,7 @@ def process_data(client_sock: socket.socket, parameters: list) -> int:
         return 3
 
 
-def process_rset(client_sock: socket.socket, parameters :list, current_state: int) -> int:
+def process_rset(client_sock: socket.socket, parameters :str, current_state: int) -> int:
     if len(parameters) != 0:
         server_respond(client_sock, CODE501)
         return current_state
@@ -211,14 +211,14 @@ def process_rset(client_sock: socket.socket, parameters :list, current_state: in
         return 3
 
 
-def process_noop(client_sock: socket.socket, parameters: list) -> None:
+def process_noop(client_sock: socket.socket, parameters: str) -> None:
     if len(parameters) != 0:
         server_respond(client_sock, CODE501)
     else:
         server_respond(client_sock, "250 Requested mail action okay completed")
 
 
-def process_quit(client_sock: socket.socket, parameters: list, current_state: int) -> int:
+def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
     if len(parameters) != 0:
         server_respond(client_sock, CODE501)
         return current_state
@@ -243,8 +243,8 @@ def main():
 
         msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
             
-        command = msg_from_client.split()[0]
-        parameters = msg_from_client.split()[1:]
+        command = msg_from_client[0:4]
+        parameters = msg_from_client[4:]
         sys.stdout.write(f"C: {msg_from_client}\r\n")
         sys.stdout.flush()
 
