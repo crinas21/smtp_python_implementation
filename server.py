@@ -80,7 +80,7 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     
 
 def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) != 1 or parameters[0] != "127.0.0.1":
+    if len(parameters) != 1:
         server_respond(client_sock, CODE501)
         return 1
     else:
@@ -93,8 +93,10 @@ def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
 
 
 def process_mail(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) > 1 or not (parameters[0].startswith("FROM:<") 
-                                    and parameters[0].endswith(">")):
+    if len(parameters) > 1:
+        server_respond(client_sock, CODE501)
+        return 3
+    if not (parameters[0].startswith("FROM:<") and parameters[0].endswith(">")):
         server_respond(client_sock, CODE501)
         return 3
     else:
@@ -103,8 +105,10 @@ def process_mail(client_sock: socket.socket, parameters: list) -> int:
 
 
 def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) > 1 or not (parameters[0].startswith("TO:<") 
-                                    and parameters[0].endswith(">")):
+    if len(parameters) > 1:
+        server_respond(client_sock, CODE501)
+        return 9
+    if not (parameters[0].startswith("TO:<") and parameters[0].endswith(">")):
         server_respond(client_sock, CODE501)
         return 9
     else:
@@ -170,7 +174,7 @@ def main():
             server_respond(client_sock, CODE220)
             server_state = 1
 
-        msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
+        msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
             
         command = msg_from_client.split()[0]
         parameters = msg_from_client.split()[1:]
