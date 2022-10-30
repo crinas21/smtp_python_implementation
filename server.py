@@ -87,7 +87,7 @@ def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
         return 1
     else:
         ip = parameters[0]
-        sys.stdout.write(f"S: 250 {ip}\nS: 250 AUTH CRAM-MD5\r\n")
+        sys.stdout.write(f"S: 250 {ip}\r\nS: 250 AUTH CRAM-MD5\r\n")
         sys.stdout.flush()
         msg = f"250 {ip}\r\n250 AUTH CRAM-MD5\r\n"
         client_sock.send(msg.encode())
