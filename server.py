@@ -110,6 +110,8 @@ def valid_address(address: str) -> bool:
         return False
 
     dot_string = split_addr[0]
+    if len(dot_string) < 1:
+        return False
 
     # Check dot string does not begin or end with "."
     if dot_string[0] == "." or dot_string[-1] == ".":
@@ -128,6 +130,9 @@ def valid_address(address: str) -> bool:
             return False
 
     domain = split_addr[1]
+    if len(domain) < 3:
+        return False
+
     if domain[0] == "[" and domain[-1] == "]": # If in square brackets, check if IPv4 address is valid
         if not valid_ip(domain[1:-1]):
             return False
