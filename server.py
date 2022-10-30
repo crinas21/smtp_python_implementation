@@ -180,7 +180,7 @@ def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
     
     if not valid_address(to_user[4:-1]):
         server_respond(client_sock, CODE501)
-        return 3
+        return 9
 
     server_respond(client_sock, "250 Requested mail action okay completed")
     return 11
