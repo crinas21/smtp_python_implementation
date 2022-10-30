@@ -92,7 +92,7 @@ def process_ehlo(client_sock: socket.socket, parameters: list) -> int:
 
 
 def process_mail(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) > 1:
+    if len(parameters) != 1:
         server_respond(client_sock, CODE501)
         return 3
     if not (parameters[0].startswith("FROM:<") and parameters[0].endswith(">")):
@@ -104,7 +104,7 @@ def process_mail(client_sock: socket.socket, parameters: list) -> int:
 
 
 def process_rcpt(client_sock: socket.socket, parameters: list) -> int:
-    if len(parameters) > 1:
+    if len(parameters) != 1:
         server_respond(client_sock, CODE501)
         return 9
     if not (parameters[0].startswith("TO:<") and parameters[0].endswith(">")):
