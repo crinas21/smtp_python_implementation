@@ -43,8 +43,6 @@ def read_config() -> tuple:
 
             if property_ls[0] == "inbox_path":
                 inbox_path_given = True
-                # if not os.path.exists(property_ls[1].strip('/')):
-                #     sys.exit(2)
 
             if property_ls[0] == "client_port":
                 try:

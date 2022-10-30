@@ -35,8 +35,6 @@ def read_config() -> tuple:
             if property_ls[0] == "send_path":
                 send_path_given = True
                 property_ls[1] = property_ls[1].strip('/')
-                if not os.path.exists(property_ls[1]):
-                    sys.exit(2)
 
             if property_ls[0] == "client_port":
                 try:
