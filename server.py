@@ -33,14 +33,13 @@ def read_config() -> tuple:
             property_ls = property.split("=")
 
             if property_ls[0] == "server_port":
-                # server_port_given = True
-                # try:
-                #     property_ls[1] = int(property_ls[1])
-                # except ValueError:
-                #     sys.exit(2)
-                property_ls[1] = int(property_ls[1])
-                # if property_ls[1] <= 1024:
-                #     sys.exit(2)
+                server_port_given = True
+                try:
+                    property_ls[1] = int(property_ls[1])
+                except ValueError:
+                    sys.exit(2)
+                if property_ls[1] <= 1024:
+                    sys.exit(2)
 
             if property_ls[0] == "inbox_path":
                 inbox_path_given = True
@@ -52,8 +51,8 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                # if property_ls[1] <= 1024:
-                #     sys.exit(2)
+                if property_ls[1] <= 1024:
+                    sys.exit(2)
 
             properties.update({property_ls[0]: property_ls[1]})
         
@@ -156,8 +155,7 @@ def process_quit(client_sock: socket.socket, parameters: list, current_state: in
         return current_state
     else:
         server_respond(client_sock, "221 Service closing transmission channel")
-        client_sock.close()
-        return 7
+        return 1
 
 
 def main():
@@ -166,11 +164,14 @@ def main():
     inbox_path = config_info[1]
 
     server_sock = setup_server_connection(server_port)
-    client_sock, address = server_sock.accept()
-    server_respond(client_sock, CODE220)
     server_state = 1
     
-    while server_state != 7:
+    while True:
+        if server_state == 1:
+            client_sock, address = server_sock.accept()
+            server_respond(client_sock, CODE220)
+            server_state = 1
+
         msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
             
         command = msg_from_client.split()[0]

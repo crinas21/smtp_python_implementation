@@ -29,8 +29,8 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                # if property_ls[1] <= 1024:
-                #     sys.exit(2)
+                if property_ls[1] <= 1024:
+                    sys.exit(2)
 
             if property_ls[0] == "send_path":
                 send_path_given = True
@@ -43,8 +43,8 @@ def read_config() -> tuple:
                     property_ls[1] = int(property_ls[1])
                 except ValueError:
                     sys.exit(2)
-                # if property_ls[1] <= 1024:
-                #     sys.exit(2)
+                if property_ls[1] <= 1024:
+                    sys.exit(2)
 
             properties.update({property_ls[0]: property_ls[1]})
         
@@ -140,12 +140,15 @@ def main():
 
     emails_to_send = get_emails_to_send(send_path)
 
-    client_sock = setup_client_connection(server_port)
-    receive_msg_from_server(client_sock)
-
-    print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
+    # client_sock = setup_client_connection(server_port)
+    # receive_msg_from_server(client_sock)
+    # print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
 
     for email in emails_to_send:
+        client_sock = setup_client_connection(server_port)
+        receive_msg_from_server(client_sock)
+        print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
+
         fobj = open(email, "r")
         contents = fobj.readlines()
         fobj.close()
@@ -153,8 +156,8 @@ def main():
         send_sender(client_sock, contents[0])
         send_recipients(client_sock, contents[1])
         send_data(client_sock, contents[2:])
-
-    print_then_send_to_server(client_sock, "QUIT")
+        print_then_send_to_server(client_sock, "QUIT")
+        client_sock.close()
 
 
 if __name__ == '__main__':
