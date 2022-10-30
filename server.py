@@ -153,7 +153,7 @@ def process_quit(client_sock: socket.socket, parameters: list, current_state: in
         return current_state
     else:
         server_respond(client_sock, "221 Service closing transmission channel")
-        return 1
+        return 7
 
 
 def main():
@@ -162,10 +162,10 @@ def main():
     inbox_path = config_info[1]
 
     server_sock = setup_server_connection(server_port)
-    server_state = 1
+    server_state = 7
     
     while True:
-        if server_state == 1:
+        if server_state == 7:
             client_sock, address = server_sock.accept()
             server_respond(client_sock, CODE220)
             server_state = 1
