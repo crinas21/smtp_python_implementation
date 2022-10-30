@@ -136,6 +136,8 @@ def valid_address(address: str) -> bool:
             return False
 
         domain = domain.split(".")
+        if len(domain) < 2:
+            return False
         for d in domain:
             d_ls = list(d)
             if d_ls[0] == "-" or d_ls[-1] == "-":
