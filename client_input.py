@@ -80,10 +80,20 @@ def main():
 
     quit = False
     while not quit:
-        msg_from_server = client_sock.recv(1024).decode()
+        try:
+            msg_from_server = client_sock.recv(1024).decode()
+        except ConnectionResetError:
+            sys.stdout.write("C: Connection lost\r\n")
+            sys.stdout.flush()
+            sys.exit(3)
         write_msg_from_server(msg_from_server)
         msg_to_server = input("C: ").rstrip('\n') + "\r\n"
-        client_sock.send(msg_to_server.encode())
+        try:
+            client_sock.send(msg_to_server.encode())
+        except BrokenPipeError:
+            sys.stdout.write("C: Connection lost\r\n")
+            sys.stdout.flush()
+            sys.exit(3)
 
 
 if __name__ == '__main__':

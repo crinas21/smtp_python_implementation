@@ -87,7 +87,11 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     sys.stdout.write(f"S: {response}\r\n")
     sys.stdout.flush()
     response += "\r\n"
-    client_sock.send(response.encode())
+    try:
+        client_sock.send(response.encode())
+    except BrokenPipeError:
+        sys.stdout.write("S: Connection lost\r\n")
+        sys.stdout.flush()
 
 
 def valid_ip(ip: str) -> bool:
@@ -265,12 +269,7 @@ def main():
             server_respond(client_sock, CODE220)
             server_state = 1
 
-        try:
-            msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
-        except BrokenPipeError:
-            sys.stdout.write("S: Connection lost\r\n")
-            sys.stdout.flush()
-            
+        msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
         sys.stdout.write(f"C: {msg_from_client}\r\n")

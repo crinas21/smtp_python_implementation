@@ -92,7 +92,12 @@ def setup_client_connection(server_port: int) -> socket.socket:
 
 
 def receive_msg_from_server(client_sock: socket.socket) -> int:
-    msg = client_sock.recv(1024).decode()
+    try:
+        msg = client_sock.recv(1024).decode()
+    except ConnectionResetError:
+        sys.stdout.write("C: Connection lost\r\n")
+        sys.stdout.flush()
+        sys.exit(3)
     msg_ls = msg.split("\r\n")
     msg_ls.pop(-1)
     for line in msg_ls:
@@ -105,7 +110,12 @@ def print_then_send_to_server(client_sock: socket.socket, msg) -> None:
     sys.stdout.write(f"C: {msg}\r\n")
     sys.stdout.flush()
     msg += "\r\n"
-    client_sock.send(msg.encode())
+    try:
+        client_sock.send(msg.encode())
+    except BrokenPipeError:
+        sys.stdout.write("C: Connection lost\r\n")
+        sys.stdout.flush()
+        sys.exit(3)
     receive_msg_from_server(client_sock)
 
 def send_sender(client_sock: socket.socket, sender: str) -> None:
@@ -136,10 +146,6 @@ def main():
     send_path = config_info[1]
 
     emails_to_send = get_emails_to_send(send_path)
-
-    # client_sock = setup_client_connection(server_port)
-    # receive_msg_from_server(client_sock)
-    # print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
 
     for email in emails_to_send:
         client_sock = setup_client_connection(server_port)
