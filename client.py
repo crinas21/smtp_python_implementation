@@ -124,11 +124,11 @@ def authenticate(client_sock: socket.socket) -> None:
     print_then_send_to_server(client_sock, "AUTH CRAM-MD5")
     server_msg = receive_msg_from_server(client_sock)
     challenge = server_msg.split()[1].rstrip("\r\n")
-    decoded_challenge = base64.b64decode(challenge, validate=True)
-    digest = hmac.new(PERSONAL_SECRET.encode(), 
+    decoded_challenge = base64.b64decode(challenge)
+    digest = hmac.new(PERSONAL_SECRET.encode('ascii'), 
                         decoded_challenge, 'md5').hexdigest()
     digest = PERSONAL_ID + " " + digest
-    client_answer = base64.b64encode(digest.encode())
+    client_answer = base64.b64encode(digest.encode('ascii'))
     print_then_send_to_server(client_sock, client_answer.decode('ascii')) # Decode because it is later encoded
     receive_msg_from_server(client_sock)
 

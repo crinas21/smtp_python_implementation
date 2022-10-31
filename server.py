@@ -249,7 +249,7 @@ def process_auth(client_sock: socket.socket, parameters: str):
     sys.stdout.write(f"C: {msg_from_client}")
     sys.stdout.flush()
     msg_from_client = msg_from_client.rstrip("\r\n")
-    decoded_msg = base64.b64decode(msg_from_client, validate=True).decode('ascii')
+    decoded_msg = base64.b64decode(msg_from_client).decode('ascii')
     new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), challenge, 'md5').hexdigest()
 
     if new_digest == decoded_msg.split()[1]:
