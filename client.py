@@ -126,12 +126,12 @@ def authenticate(client_sock: socket.socket) -> None:
     challenge = server_msg.split()[1].rstrip("\r\n")
     decoded_challenge = base64.b64decode(challenge)
     digest = hmac.new(PERSONAL_SECRET.encode('ascii'), 
-                        decoded_challenge, 'md5').hexdigest()
-    digest = PERSONAL_ID + " " + digest
+                        decoded_challenge, digestmod='md5').hexdigest()
+    digest = PERSONAL_ID + " " + digest + "\r\n"
     client_answer = base64.b64encode(digest.encode('ascii'))
     sys.stdout.write(f"C: {client_answer.decode('ascii')}\r\n")
     sys.stdout.flush()
-    client_sock.send(client_answer + "\r\n".encode('ascii'))
+    client_sock.send(client_answer)
     #print_then_send_to_server(client_sock, client_answer.decode('ascii')) # Decode because it is later encoded
     receive_msg_from_server(client_sock)
 
