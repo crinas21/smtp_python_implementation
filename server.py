@@ -5,6 +5,7 @@ import signal
 from datetime import datetime
 from dataclasses import dataclass
 import hmac
+import base64
 
 
 @dataclass(frozen=True)
@@ -174,16 +175,11 @@ def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
 
 
 def process_mail(client_sock: socket.socket, parameters: str) -> int:
-    if len(parameters) == 0:
+    if not (parameters.startswith(" FROM:<") and parameters.endswith(">\r\n")):
         server_respond(client_sock, CODE501)
         return 3
 
-    from_user = parameters.lstrip()
-    if not (from_user.startswith("FROM:<") and from_user.endswith(">\r\n")):
-        server_respond(client_sock, CODE501)
-        return 3
-
-    if not valid_address(from_user[6:-3]):
+    if not valid_address(parameters[7:-3]):
         server_respond(client_sock, CODE501)
         return 3
 
@@ -192,16 +188,11 @@ def process_mail(client_sock: socket.socket, parameters: str) -> int:
 
 
 def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
-    if len(parameters) == 0:
-        server_respond(client_sock, CODE501)
-        return 9
-
-    to_user = parameters.lstrip()
-    if not (to_user.startswith("TO:<") and to_user.endswith(">\r\n")):
+    if not (parameters.startswith(" TO:<") and parameters.endswith(">\r\n")):
         server_respond(client_sock, CODE501)
         return 9
     
-    if not valid_address(to_user[4:-3]):
+    if not valid_address(parameters[5:-3]):
         server_respond(client_sock, CODE501)
         return 9
 
@@ -245,9 +236,27 @@ def process_noop(client_sock: socket.socket, parameters: str) -> None:
 
 
 def process_auth(client_sock: socket.socket, parameters: str):
-    if len(parameters) != 0:
-        server_respond(client_sock, CODE501)
+    if parameters != " CRAM-MD5\r\n":
+        server_respond(client_sock, "504 Unrecognized authenticaton type")
+        return 3
     
+    challenge = os.urandom(36)
+    encoded_challenge = base64.b64encode(challenge)
+    response = f"334 {encoded_challenge.decode()}"
+    server_respond(client_sock, response)
+
+    msg_from_client = client_sock.recv(1024).decode()
+    sys.stdout.write(f"C: {msg_from_client}")
+    sys.stdout.flush()
+    msg_from_client = msg_from_client.rstrip("\r\n")
+    decoded_msg = base64.b64decode(msg_from_client, validate=True).decode()
+    new_digest = hmac.new(PERSONAL_SECRET.encode(), challenge, 'md5').hexdigest()
+
+    if new_digest == decoded_msg.split()[1]:
+        server_respond(client_sock, "235 Authentication successful")
+    else:
+        server_respond(client_sock, "535: Authentication credentials invalid")
+    return 3
 
 
 def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
@@ -315,7 +324,10 @@ def main():
             process_noop(client_sock, parameters)
 
         elif command == "AUTH":
-            process_auth(client_sock, parameters)
+            if server_state == 3:
+                server_state = process_auth(client_sock, parameters)
+            else:
+                server_respond(client_sock, CODE503)
 
         elif command == "QUIT":
             server_state = process_quit(client_sock, parameters, server_state)

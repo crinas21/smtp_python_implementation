@@ -3,6 +3,7 @@ import socket
 import sys
 from datetime import datetime
 import hmac
+import base64
 
 
 PERSONAL_ID = '166FB8'
@@ -92,7 +93,7 @@ def setup_client_connection(server_port: int) -> socket.socket:
     return s
 
 
-def receive_msg_from_server(client_sock: socket.socket) -> int:
+def receive_msg_from_server(client_sock: socket.socket) -> str:
     try:
         msg = client_sock.recv(1024).decode()
     except ConnectionResetError:
@@ -104,10 +105,10 @@ def receive_msg_from_server(client_sock: socket.socket) -> int:
     for line in msg_ls:
         sys.stdout.write(f"S: {line}\r\n")
         sys.stdout.flush()
-    return int(msg.split()[0])
+    return msg
 
 
-def print_then_send_to_server(client_sock: socket.socket, msg) -> None:
+def print_then_send_to_server(client_sock: socket.socket, msg: str) -> None:
     sys.stdout.write(f"C: {msg}\r\n")
     sys.stdout.flush()
     msg += "\r\n"
@@ -117,12 +118,26 @@ def print_then_send_to_server(client_sock: socket.socket, msg) -> None:
         sys.stdout.write("C: Connection lost\r\n")
         sys.stdout.flush()
         sys.exit(3)
+
+
+def authenticate(client_sock: socket.socket) -> None:
+    print_then_send_to_server(client_sock, "AUTH CRAM-MD5")
+    server_msg = receive_msg_from_server(client_sock)
+    challenge = server_msg.split()[1].rstrip("\r\n")
+    decoded_challenge = base64.b64decode(challenge, validate=True)
+    digest = hmac.new(PERSONAL_SECRET.encode(), 
+                        decoded_challenge, 'md5').hexdigest()
+    digest = PERSONAL_ID + " " + digest
+    client_answer = base64.b64encode(digest.encode())
+    print_then_send_to_server(client_sock, client_answer.decode()) # Decode because it is later encoded
     receive_msg_from_server(client_sock)
+
 
 def send_sender(client_sock: socket.socket, sender: str) -> None:
     sender = sender.split()[1].rstrip('\n')
     msg = f"MAIL FROM:{sender}"
     print_then_send_to_server(client_sock, msg)
+    receive_msg_from_server(client_sock)
 
 
 def send_recipients(client_sock: socket.socket, recipients: str) -> None:
@@ -130,15 +145,19 @@ def send_recipients(client_sock: socket.socket, recipients: str) -> None:
     for recipient in recipients:
         msg = f"RCPT TO:{recipient}"
         print_then_send_to_server(client_sock, msg)
+        receive_msg_from_server(client_sock)
 
 
 def send_data(client_sock: socket.socket, data: list) -> None:
     print_then_send_to_server(client_sock, "DATA")
+    receive_msg_from_server(client_sock)
     for i in range(len(data)):
         data[i] = data[i].rstrip('\n')
     for section in data:
         print_then_send_to_server(client_sock, section)
+        receive_msg_from_server(client_sock)
     print_then_send_to_server(client_sock, ".")
+    receive_msg_from_server(client_sock)
 
 
 def main():
@@ -152,6 +171,7 @@ def main():
         client_sock = setup_client_connection(server_port)
         receive_msg_from_server(client_sock)
         print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
+        receive_msg_from_server(client_sock)
 
         try:
             fobj = open(email, "r")
@@ -160,11 +180,17 @@ def main():
         except Exception:
             sys.stdout.write(f"C: {email}: Bad formation")
             continue
+        
+        if "auth" in os.path.abspath(email).lower():
+            authenticate(client_sock)
 
         send_sender(client_sock, contents[0])
         send_recipients(client_sock, contents[1])
         send_data(client_sock, contents[2:])
+
         print_then_send_to_server(client_sock, "QUIT")
+        receive_msg_from_server(client_sock)
+
         client_sock.close()
 
 
