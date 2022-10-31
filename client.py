@@ -2,6 +2,7 @@ import os
 import socket
 import sys
 from datetime import datetime
+import hmac
 
 
 PERSONAL_ID = '166FB8'

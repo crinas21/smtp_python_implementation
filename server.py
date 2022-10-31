@@ -1,10 +1,10 @@
 import os
 import socket
 import sys
+import signal
 from datetime import datetime
 from dataclasses import dataclass
-from turtle import dot
-from xxlimited import Str
+import hmac
 
 
 @dataclass(frozen=True)
@@ -87,11 +87,7 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     sys.stdout.write(f"S: {response}\r\n")
     sys.stdout.flush()
     response += "\r\n"
-    try:
-        client_sock.send(response.encode())
-    except BrokenPipeError:
-        sys.stdout.write("S: Connection lost\r\n")
-        sys.stdout.flush()
+    client_sock.send(response.encode())
 
 
 def valid_ip(ip: str) -> bool:
@@ -103,6 +99,8 @@ def valid_ip(ip: str) -> bool:
         try:
             num = int(digit)
         except ValueError:
+            return False
+        if num < 0 or num > 255:
             return False
     
     return True
@@ -159,11 +157,11 @@ def valid_address(address: str) -> bool:
     
 
 def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
-    if len(parameters) == 0:
+    if not parameters.endswith("\r\n"):
         server_respond(client_sock, CODE501)
         return 1
     
-    parameters = parameters.lstrip()
+    parameters = parameters.lstrip().rstrip("\r\n")
     if not valid_ip(parameters):
         server_respond(client_sock, CODE501)
         return 1
@@ -181,11 +179,11 @@ def process_mail(client_sock: socket.socket, parameters: str) -> int:
         return 3
 
     from_user = parameters.lstrip()
-    if not (from_user.startswith("FROM:<") and from_user.endswith(">")):
+    if not (from_user.startswith("FROM:<") and from_user.endswith(">\r\n")):
         server_respond(client_sock, CODE501)
         return 3
 
-    if not valid_address(from_user[6:-1]):
+    if not valid_address(from_user[6:-3]):
         server_respond(client_sock, CODE501)
         return 3
 
@@ -199,11 +197,11 @@ def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
         return 9
 
     to_user = parameters.lstrip()
-    if not (to_user.startswith("TO:<") and to_user.endswith(">")):
+    if not (to_user.startswith("TO:<") and to_user.endswith(">\r\n")):
         server_respond(client_sock, CODE501)
         return 9
     
-    if not valid_address(to_user[4:-1]):
+    if not valid_address(to_user[4:-3]):
         server_respond(client_sock, CODE501)
         return 9
 
@@ -212,7 +210,7 @@ def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
 
 
 def process_data(client_sock: socket.socket, parameters: str) -> int:
-    if len(parameters) != 0:
+    if parameters != "\r\n":
         server_respond(client_sock, CODE501)
         return 11
     else:
@@ -231,7 +229,7 @@ def process_data(client_sock: socket.socket, parameters: str) -> int:
 
 
 def process_rset(client_sock: socket.socket, parameters :str, current_state: int) -> int:
-    if len(parameters) != 0:
+    if parameters != "\r\n":
         server_respond(client_sock, CODE501)
         return current_state
     else:
@@ -240,14 +238,20 @@ def process_rset(client_sock: socket.socket, parameters :str, current_state: int
 
 
 def process_noop(client_sock: socket.socket, parameters: str) -> None:
-    if len(parameters) != 0:
+    if parameters != "\r\n":
         server_respond(client_sock, CODE501)
     else:
         server_respond(client_sock, "250 Requested mail action okay completed")
 
 
-def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
+def process_auth(client_sock: socket.socket, parameters: str):
     if len(parameters) != 0:
+        server_respond(client_sock, CODE501)
+    
+
+
+def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
+    if parameters != "\r\n":
         server_respond(client_sock, CODE501)
         return current_state
     else:
@@ -255,7 +259,15 @@ def process_quit(client_sock: socket.socket, parameters: str, current_state: int
         return 7
 
 
+def sigint_handler(sig, frame) -> None:
+    sys.stdout.write("S: SIGINT received, closing\r\n")
+    sys.stdout.flush()
+    sys.exit(0)
+
+
 def main():
+    signal.signal(signal.SIGINT, sigint_handler)
+
     config_info = read_config()
     server_port = config_info[0]
     inbox_path = config_info[1]
@@ -269,10 +281,10 @@ def main():
             server_respond(client_sock, CODE220)
             server_state = 1
 
-        msg_from_client = client_sock.recv(1024).decode().rstrip("\n").rstrip("\r")
+        msg_from_client = client_sock.recv(1024).decode()
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
-        sys.stdout.write(f"C: {msg_from_client}\r\n")
+        sys.stdout.write(f"C: {msg_from_client}")
         sys.stdout.flush()
 
         if command == "EHLO":
@@ -301,6 +313,9 @@ def main():
 
         elif command == "NOOP":
             process_noop(client_sock, parameters)
+
+        elif command == "AUTH":
+            process_auth(client_sock, parameters)
 
         elif command == "QUIT":
             server_state = process_quit(client_sock, parameters, server_state)
