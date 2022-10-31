@@ -242,8 +242,11 @@ def process_auth(client_sock: socket.socket, parameters: str):
     
     challenge = os.urandom(36)
     encoded_challenge = base64.b64encode(challenge)
-    response = f"334 {encoded_challenge.decode('ascii')}"
-    server_respond(client_sock, response)
+    sys.stdout.write(f"S: 334 {encoded_challenge.decode('ascii')}\r\n")
+    sys.stdout.flush()
+    response = "334 ".encode('ascii') + encoded_challenge + \
+                                        "\r\n".encode('ascii')
+    client_sock.send(response)
 
     msg_from_client = client_sock.recv(1024).decode('ascii')
     sys.stdout.write(f"C: {msg_from_client}")
