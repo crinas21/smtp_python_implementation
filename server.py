@@ -170,7 +170,7 @@ def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
     sys.stdout.write(f"S: 250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5\r\n")
     sys.stdout.flush()
     msg = f"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n"
-    client_sock.send(msg.encode())
+    client_sock.send(msg.encode('ascii'))
     return 3
 
 
@@ -206,12 +206,12 @@ def process_data(client_sock: socket.socket, parameters: str) -> int:
         return 11
     else:
         server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
-        msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
+        msg_from_client = client_sock.recv(1024).decode('ascii').rstrip("\r\n")
         while msg_from_client != ".":
             sys.stdout.write(f"C: {msg_from_client}\r\n")
             sys.stdout.flush()
             server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
-            msg_from_client = client_sock.recv(1024).decode().rstrip("\r\n")
+            msg_from_client = client_sock.recv(1024).decode('ascii').rstrip("\r\n")
 
         sys.stdout.write(f"C: {msg_from_client}\r\n")
         sys.stdout.flush()
@@ -250,7 +250,7 @@ def process_auth(client_sock: socket.socket, parameters: str):
     sys.stdout.flush()
     msg_from_client = msg_from_client.rstrip("\r\n")
     decoded_msg = base64.b64decode(msg_from_client, validate=True).decode('ascii')
-    new_digest = hmac.new(PERSONAL_SECRET.encode(), challenge, 'md5').hexdigest()
+    new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), challenge, 'md5').hexdigest()
 
     if new_digest == decoded_msg.split()[1]:
         server_respond(client_sock, "235 Authentication successful")
@@ -290,7 +290,7 @@ def main():
             server_respond(client_sock, CODE220)
             server_state = 1
 
-        msg_from_client = client_sock.recv(1024).decode()
+        msg_from_client = client_sock.recv(1024).decode('ascii')
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
         sys.stdout.write(f"C: {msg_from_client}")
