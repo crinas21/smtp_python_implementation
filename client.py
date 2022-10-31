@@ -95,7 +95,7 @@ def setup_client_connection(server_port: int) -> socket.socket:
 
 def receive_msg_from_server(client_sock: socket.socket) -> str:
     try:
-        msg = client_sock.recv(1024).decode()
+        msg = client_sock.recv(1024).decode('ascii')
     except ConnectionResetError:
         sys.stdout.write("C: Connection lost\r\n")
         sys.stdout.flush()
@@ -129,7 +129,7 @@ def authenticate(client_sock: socket.socket) -> None:
                         decoded_challenge, 'md5').hexdigest()
     digest = PERSONAL_ID + " " + digest
     client_answer = base64.b64encode(digest.encode())
-    print_then_send_to_server(client_sock, client_answer.decode()) # Decode because it is later encoded
+    print_then_send_to_server(client_sock, client_answer.decode('ascii')) # Decode because it is later encoded
     receive_msg_from_server(client_sock)
 
 
