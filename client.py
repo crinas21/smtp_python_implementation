@@ -113,7 +113,7 @@ def print_then_send_to_server(client_sock: socket.socket, msg: str) -> None:
     sys.stdout.flush()
     msg += "\r\n"
     try:
-        client_sock.send(msg.encode())
+        client_sock.send(msg.encode('ascii'))
     except BrokenPipeError:
         sys.stdout.write("C: Connection lost\r\n")
         sys.stdout.flush()

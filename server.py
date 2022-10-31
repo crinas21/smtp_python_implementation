@@ -88,7 +88,7 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     sys.stdout.write(f"S: {response}\r\n")
     sys.stdout.flush()
     response += "\r\n"
-    client_sock.send(response.encode())
+    client_sock.send(response.encode('ascii'))
 
 
 def valid_ip(ip: str) -> bool:
