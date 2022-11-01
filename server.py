@@ -108,8 +108,8 @@ def inbox_mail(email: Email, inbox_path: str, authorised: bool) -> None:
         date = email.data_lines[0][6:]
         try:
             date_format = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %z')
-            timestamp = datetime.timestamp(date_format)
-            filename = str(timestamp) + ".txt"
+            timestamp = str(datetime.timestamp(date_format)).split(".")[0]
+            filename = timestamp + ".txt"
         except ValueError:
             filename = "unknown.txt"
     else:
