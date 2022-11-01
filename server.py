@@ -245,8 +245,7 @@ def process_auth(client_sock: socket.socket, parameters: str):
     encoded_challenge = base64.b64encode(asc_challenge.encode('ascii')) # Base 64 encode the ascii challenge
     sys.stdout.write(f"S: 334 {encoded_challenge.decode('ascii')}\r\n")
     sys.stdout.flush()
-    response = f"334 {encoded_challenge}\r\n"
-    print(response.encode('ascii'))
+    response = "334 ".encode('ascii') + encoded_challenge + "\r\n".encode('ascii')
     client_sock.send(response)
 
     msg_from_client = client_sock.recv(1024).decode('ascii')
