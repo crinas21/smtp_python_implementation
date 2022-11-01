@@ -1,2 +1,2 @@
 server_port=9646
-inbox_path=/inbox
+inbox_path=inbox
