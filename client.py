@@ -286,6 +286,7 @@ def main():
 
     for email in emails_to_send:
         client_sock = setup_client_connection(server_port)
+        abspath = os.path.abspath(email)
         receive_msg_from_server(client_sock)
         print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
         receive_msg_from_server(client_sock)
@@ -295,16 +296,16 @@ def main():
             contents = fobj.readlines()
             fobj.close()
         except PermissionError:
-            sys.stdout.write(f"C: {email}: Bad formation\r\n")
-            sys.stdout.flush()
+            print_then_send_to_server(client_sock, f"{abspath}: Bad formation")
+            receive_msg_from_server(client_sock)
             print_then_send_to_server(client_sock, "QUIT")
             receive_msg_from_server(client_sock)
             client_sock.close()
             continue
 
         if bad_formation(contents):
-            sys.stdout.write(f"C: {email} Bad formation\r\n")
-            sys.stdout.flush()
+            print_then_send_to_server(client_sock, f"{abspath}: Bad formation")
+            receive_msg_from_server(client_sock)
             print_then_send_to_server(client_sock, "QUIT")
             receive_msg_from_server(client_sock)
             client_sock.close()
