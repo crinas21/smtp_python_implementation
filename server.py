@@ -102,7 +102,7 @@ def inbox_mail(email: Email, inbox_path: str, authorised: bool) -> None:
 
     for data in email.data_lines:
         email_txt += data + "\n"
-    email_txt = email_txt.rstrip("\n")
+    email_txt = email_txt
 
     if email.data_lines[0].startswith("Date: "):
         date = email.data_lines[0][6:]
