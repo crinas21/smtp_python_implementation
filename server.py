@@ -259,7 +259,7 @@ def process_auth(client_sock: socket.socket, parameters: str):
     if new_digest == decoded_msg.split()[1]:
         server_respond(client_sock, "235 Authentication successful")
     else:
-        server_respond(client_sock, "535: Authentication credentials invalid")
+        server_respond(client_sock, "535 Authentication credentials invalid")
     return 3
 
 
