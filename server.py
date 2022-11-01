@@ -53,6 +53,9 @@ def read_config() -> tuple:
                     sys.exit(2)
 
             if property_ls[0] == "inbox_path":
+                property_ls[1] = os.path.expanduser(property_ls[1])
+                if not os.path.exists(property_ls[1]):
+                    sys.exit(2)
                 inbox_path_given = True
 
             if property_ls[0] == "client_port":

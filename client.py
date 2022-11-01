@@ -35,6 +35,7 @@ def read_config() -> tuple:
                     sys.exit(2)
 
             if property_ls[0] == "send_path":
+                property_ls[1] = os.path.expanduser(property_ls[1])
                 if not os.path.exists(property_ls[1]):
                     sys.exit(2)
                 send_path_given = True
