@@ -42,7 +42,7 @@ def read_config() -> tuple:
 
             if property_ls[0] == "client_port":
                 try:
-                    property_ls[1] = int(property_ls[1])
+                    property_ls[1] = int(property_ls[1].strip("/"))
                 except ValueError:
                     sys.exit(2)
                 if property_ls[1] <= 1024:
