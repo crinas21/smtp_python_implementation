@@ -285,31 +285,25 @@ def main():
     emails_to_send = get_emails_to_send(send_path)
 
     for email in emails_to_send:
-        client_sock = setup_client_connection(server_port)
         abspath = os.path.abspath(email)
-        receive_msg_from_server(client_sock)
-        print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
-        receive_msg_from_server(client_sock)
-
         try:
             fobj = open(email, "r")
             contents = fobj.readlines()
             fobj.close()
         except PermissionError:
-            print_then_send_to_server(client_sock, f"{abspath}: Bad formation")
-            receive_msg_from_server(client_sock)
-            print_then_send_to_server(client_sock, "QUIT")
-            receive_msg_from_server(client_sock)
-            client_sock.close()
+            sys.stdout.write(f"C: {abspath}: Bad formation\r\n")
+            sys.stdout.flush()
             continue
 
         if bad_formation(contents):
-            print_then_send_to_server(client_sock, f"{abspath}: Bad formation")
-            receive_msg_from_server(client_sock)
-            print_then_send_to_server(client_sock, "QUIT")
-            receive_msg_from_server(client_sock)
-            client_sock.close()
+            sys.stdout.write(f"C: {abspath}: Bad formation\r\n")
+            sys.stdout.flush()
             continue
+
+        client_sock = setup_client_connection(server_port)
+        receive_msg_from_server(client_sock)
+        print_then_send_to_server(client_sock, "EHLO 127.0.0.1")
+        receive_msg_from_server(client_sock)
         
         if "auth" in os.path.abspath(email).lower():
             authenticate(client_sock)
