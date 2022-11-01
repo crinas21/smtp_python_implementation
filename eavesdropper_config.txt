@@ -1,0 +1,3 @@
+server_port=9646
+client_port=9647
+spy_path=spy

@@ -35,6 +35,8 @@ def read_config() -> tuple:
                     sys.exit(2)
 
             if property_ls[0] == "send_path":
+                if not os.path.exists(property_ls[1]):
+                    sys.exit(2)
                 send_path_given = True
 
             if property_ls[0] == "client_port":
@@ -74,6 +76,119 @@ def get_emails_to_send(send_path: str) -> tuple:
         file_list[i] = '/'.join(file_list[i])
 
     return tuple(file_list)
+
+
+def valid_ip(ip: str) -> bool:
+    ip = ip.split(".")
+    if len(ip) != 4:
+        return False
+
+    for digit in ip:
+        try:
+            num = int(digit)
+        except ValueError:
+            return False
+        if num < 0 or num > 255:
+            return False
+    
+    return True
+
+
+def valid_address(address: str) -> bool:
+    split_addr = address.split('@')
+    if len(split_addr) != 2:
+        return False
+
+    dot_string = split_addr[0]
+    if len(dot_string) < 1:
+        return False
+
+    # Check dot string does not begin or end with "."
+    if dot_string[0] == "." or dot_string[-1] == ".":
+        return False
+
+    # Check if any sections separated by dots start with a "-"
+    split_dot_string = dot_string.split(".")
+    for st in split_dot_string:
+        if st[0] == "-":
+            return False
+
+    # Check all characters are alphanumeric or "-" or "."
+    dot_string_ls = list(dot_string)
+    for char in dot_string_ls:
+        if not (char.isalnum() or char == "-" or char == "."):
+            return False
+
+    domain = split_addr[1]
+    if len(domain) < 3:
+        return False
+
+    if domain[0] == "[" and domain[-1] == "]": # If in square brackets, check if IPv4 address is valid
+        if not valid_ip(domain[1:-1]):
+            return False
+    else:
+        if domain[0] == "." or domain[-1] == ".":
+            return False
+
+        domain = domain.split(".")
+        if len(domain) < 2:
+            return False
+        for d in domain:
+            d_ls = list(d)
+            if d_ls[0] == "-" or d_ls[-1] == "-":
+                return False
+            for char in d_ls:
+                if not (char.isalnum() or char == "-" or char == "."):
+                    return False
+
+    return True
+
+
+def bad_formation(contents: list[str]) -> bool:
+    if len(contents) < 5:
+        return True
+
+    # Check file is ascii encoded
+    # for line in contents:
+    #     try:
+    #         line.decode('ascii')
+    #     except UnicodeDecodeError:
+    #         return True
+
+    from_line = contents[0]
+    to_line = contents[1]
+    date_line = contents[2]
+    subj_line = contents[3]
+    
+    # For the from line
+    if not (from_line.startswith("From: <") and from_line.endswith(">\n")):
+        return True
+    if not valid_address(from_line[7:-2]):
+        return True
+
+    # For the to line
+    if not (to_line.startswith("To: <") and to_line.endswith(">\n")):
+        return True
+    try:
+        addresses = to_line.rstrip("\n").split()[1].split(",")
+    except IndexError:
+        return True
+    for address in addresses:
+        if not (address.startswith("<") and address.endswith(">")) or \
+                                    not valid_address(address[1:-1]):
+            return True
+    
+    # For the date line
+    if not (date_line.startswith("Date: ") and date_line.endswith("\n")):
+        return True
+    try:
+        datetime.strptime(date_line[6:-1], '%a, %d %b %Y %H:%M:%S %z')
+    except ValueError:
+        return True
+
+    # For the subject line
+    if not(subj_line.startswith("Subject: ") and subj_line.endswith("\n")):
+        return True
 
 
 def setup_client_connection(server_port: int) -> socket.socket:
@@ -150,7 +265,7 @@ def send_recipients(client_sock: socket.socket, recipients: str) -> None:
         receive_msg_from_server(client_sock)
 
 
-def send_data(client_sock: socket.socket, data: list) -> None:
+def send_data(client_sock: socket.socket, data: list[str]) -> None:
     print_then_send_to_server(client_sock, "DATA")
     receive_msg_from_server(client_sock)
     for i in range(len(data)):
@@ -179,8 +294,20 @@ def main():
             fobj = open(email, "r")
             contents = fobj.readlines()
             fobj.close()
-        except Exception:
-            sys.stdout.write(f"C: {email}: Bad formation")
+        except PermissionError:
+            sys.stdout.write(f"C: {email}: Bad formation\r\n")
+            sys.stdout.flush()
+            print_then_send_to_server(client_sock, "QUIT")
+            receive_msg_from_server(client_sock)
+            client_sock.close()
+            continue
+
+        if bad_formation(contents):
+            sys.stdout.write(f"C: {email} Bad formation\r\n")
+            sys.stdout.flush()
+            print_then_send_to_server(client_sock, "QUIT")
+            receive_msg_from_server(client_sock)
+            client_sock.close()
             continue
         
         if "auth" in os.path.abspath(email).lower():

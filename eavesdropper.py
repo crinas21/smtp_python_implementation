@@ -48,11 +48,45 @@ def read_config() -> tuple:
     return (properties.get("server_port"), properties.get("client_port"), properties.get("spy_path"))
 
 
+def setup_connection_as_client(server_port: int) -> socket.socket:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.settimeout(10)
+
+    try:
+        s.connect(("127.0.0.1", server_port))
+    except ConnectionRefusedError:
+        print("C: Cannot establish connection")
+        sys.exit(3)
+    except TimeoutError:
+        print("C: Cannot establish connection")
+        sys.exit(3)
+
+    return s
+
+
+def setup_connection_as_server(client_port: int) -> socket.socket:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        s.bind(("127.0.0.1", client_port))
+    except OSError:
+        sys.exit(2)
+    s.listen(1)
+    return s
+
+
 def main():
     config_info = read_config()
     server_port = config_info[0]
     client_port = config_info[1]
     spy_path = config_info[2]
+
+    client_sock = setup_connection_as_client(server_port)
+    server_sock = setup_connection_as_server(client_port)
+
+    while True:
+        break
 
 
 if __name__ == '__main__':
