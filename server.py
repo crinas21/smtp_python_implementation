@@ -8,12 +8,11 @@ import hmac
 import base64
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=False)
 class Email:
     sender: str
-    recipients: tuple[str]
-    subject: str
-    body: str
+    recipients: list[str]
+    data_lines: list[str]
 
 
 PERSONAL_ID = '166FB8'
@@ -89,6 +88,37 @@ def server_respond(client_sock: socket.socket, response: str) -> None:
     sys.stdout.flush()
     response += "\r\n"
     client_sock.send(response.encode('ascii'))
+
+
+def inbox_mail(email: Email, inbox_path: str, authorised: bool) -> None:
+    email_txt = f"From: <{email.sender}>\nTo: "
+
+    for rcpt in email.recipients:
+        email_txt += f"<{rcpt}>,"
+    email_txt = email_txt.rstrip(",") + "\n"
+
+    for data in email.data_lines:
+        email_txt += data + "\n"
+    email_txt = email_txt.rstrip("\n")
+
+    if email.data_lines[0].startswith("Date: "):
+        date = email.data_lines[0][6:]
+        try:
+            date_format = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %z')
+            timestamp = datetime.timestamp(date_format)
+            filename = str(timestamp) + ".txt"
+        except ValueError:
+            filename = "unknown.txt"
+    else:
+        filename = "unknown.txt"
+
+    if authorised:
+        filename = "auth." + filename
+
+    filename = inbox_path + "/" + filename
+    fobj = open(filename, "w")
+    fobj.write(email_txt)
+    fobj.close()
 
 
 def valid_ip(ip: str) -> bool:
@@ -174,7 +204,7 @@ def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
     return 3
 
 
-def process_mail(client_sock: socket.socket, parameters: str) -> int:
+def process_mail(client_sock: socket.socket, parameters: str, email: Email) -> int:
     if not (parameters.startswith(" FROM:<") and parameters.endswith(">\r\n")):
         server_respond(client_sock, CODE501)
         return 3
@@ -184,10 +214,11 @@ def process_mail(client_sock: socket.socket, parameters: str) -> int:
         return 3
 
     server_respond(client_sock, "250 Requested mail action okay completed")
+    email.sender = parameters[7:-3]
     return 9
 
 
-def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
+def process_rcpt(client_sock: socket.socket, parameters: str, email: Email) -> int:
     if not (parameters.startswith(" TO:<") and parameters.endswith(">\r\n")):
         server_respond(client_sock, CODE501)
         return 9
@@ -197,10 +228,11 @@ def process_rcpt(client_sock: socket.socket, parameters: str) -> int:
         return 9
 
     server_respond(client_sock, "250 Requested mail action okay completed")
+    email.recipients.append(parameters[5:-3])
     return 11
 
 
-def process_data(client_sock: socket.socket, parameters: str) -> int:
+def process_data(client_sock: socket.socket, parameters: str, email: Email) -> int:
     if parameters != "\r\n":
         server_respond(client_sock, CODE501)
         return 11
@@ -211,6 +243,7 @@ def process_data(client_sock: socket.socket, parameters: str) -> int:
             sys.stdout.write(f"C: {msg_from_client}\r\n")
             sys.stdout.flush()
             server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
+            email.data_lines.append(msg_from_client)
             msg_from_client = client_sock.recv(1024).decode('ascii').rstrip("\r\n")
 
         sys.stdout.write(f"C: {msg_from_client}\r\n")
@@ -235,10 +268,10 @@ def process_noop(client_sock: socket.socket, parameters: str) -> None:
         server_respond(client_sock, "250 Requested mail action okay completed")
 
 
-def process_auth(client_sock: socket.socket, parameters: str):
+def process_auth(client_sock: socket.socket, parameters: str) -> bool:
     if parameters != " CRAM-MD5\r\n":
         server_respond(client_sock, "504 Unrecognized authenticaton type")
-        return 3
+        return False
     
     challenge = os.urandom(36)
     asc_challenge =  base64.b64encode(challenge).decode('ascii') # Decode the challenge to ascii
@@ -258,9 +291,10 @@ def process_auth(client_sock: socket.socket, parameters: str):
     msg_id = decoded_msg.split()[0]
     if new_digest == msg_digest and PERSONAL_ID == msg_id:
         server_respond(client_sock, "235 Authentication successful")
+        return True
     else:
         server_respond(client_sock, "535 Authentication credentials invalid")
-    return 3
+        return False
 
 
 def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
@@ -287,6 +321,7 @@ def main():
 
     server_sock = setup_server_connection(server_port)
     server_state = 7
+    authorised = False
     
     while True:
         if server_state == 7:
@@ -300,41 +335,48 @@ def main():
         sys.stdout.write(f"C: {msg_from_client}")
         sys.stdout.flush()
 
+        if server_state == 3:
+            email = Email(None, [], [])
+
         if command == "EHLO":
             server_state = process_ehlo(client_sock, parameters)
+            authorised = False
 
         elif command == "MAIL":
             if server_state == 3:
-                server_state = process_mail(client_sock, parameters)
+                server_state = process_mail(client_sock, parameters, email)
             else:
                 server_respond(client_sock, CODE503)
 
         elif command == "RCPT":
             if server_state == 9 or server_state == 11:
-                server_state = process_rcpt(client_sock, parameters)
+                server_state = process_rcpt(client_sock, parameters, email)
             else:
                 server_respond(client_sock, CODE503)
 
         elif command == "DATA":
             if server_state == 11:
-                server_state = process_data(client_sock, parameters)
+                server_state = process_data(client_sock, parameters, email)
+                inbox_mail(email, inbox_path, authorised)
             else:
                 server_respond(client_sock, CODE503)
 
         elif command == "RSET":
             server_state = process_rset(client_sock, parameters, server_state)
+            authorised = False
 
         elif command == "NOOP":
             process_noop(client_sock, parameters)
 
         elif command == "AUTH":
             if server_state == 3:
-                server_state = process_auth(client_sock, parameters)
+                authorised = process_auth(client_sock, parameters)
             else:
                 server_respond(client_sock, CODE503)
 
         elif command == "QUIT":
             server_state = process_quit(client_sock, parameters, server_state)
+            authorised = False
 
         else:
             server_respond(client_sock, CODE500)
