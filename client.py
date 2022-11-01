@@ -132,7 +132,6 @@ def authenticate(client_sock: socket.socket) -> None:
     sys.stdout.write(f"C: {client_answer.decode('ascii')}\r\n")
     sys.stdout.flush()
     client_sock.send(client_answer)
-    #print_then_send_to_server(client_sock, client_answer.decode('ascii')) # Decode because it is later encoded
     receive_msg_from_server(client_sock)
 
 

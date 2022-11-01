@@ -241,12 +241,12 @@ def process_auth(client_sock: socket.socket, parameters: str):
         return 3
     
     challenge = os.urandom(36)
-    asc_challenge =  base64.b64encode(challenge).decode('ascii')
-    encoded_challenge = base64.b64encode(asc_challenge.encode('ascii'))
+    asc_challenge =  base64.b64encode(challenge).decode('ascii') # Decode the challenge to ascii
+    encoded_challenge = base64.b64encode(asc_challenge.encode('ascii')) # Base 64 encode the ascii challenge
     sys.stdout.write(f"S: 334 {encoded_challenge.decode('ascii')}\r\n")
     sys.stdout.flush()
-    response = "334 ".encode('ascii') + encoded_challenge + "\r\n".encode('ascii')
-    print(response)
+    response = f"334 {encoded_challenge}\r\n"
+    print(response.encode('ascii'))
     client_sock.send(response)
 
     msg_from_client = client_sock.recv(1024).decode('ascii')
@@ -256,7 +256,7 @@ def process_auth(client_sock: socket.socket, parameters: str):
     decoded_msg = base64.b64decode(msg_from_client).decode('ascii')
     new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), asc_challenge.encode('ascii'), digestmod='md5').hexdigest()
 
-    if new_digest == decoded_msg.split()[1]:
+    if new_digest == decoded_msg.split()[1] and PERSONAL_ID == decoded_msg.split()[0]:
         server_respond(client_sock, "235 Authentication successful")
     else:
         server_respond(client_sock, "535 Authentication credentials invalid")
