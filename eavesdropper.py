@@ -3,8 +3,9 @@ import socket
 import sys
 from datetime import datetime
 from dataclasses import dataclass
-import server as sv
-import client as cl
+from server import setup_server_connection
+from server import inbox_mail
+from client import setup_client_connection
 
 
 @dataclass(frozen=False)
@@ -85,13 +86,17 @@ def main():
     client_port = config_info[1]
     spy_path = config_info[2]
 
-    server_sock = sv.setup_server_connection(client_port) # Acting as server
+    # Check spy_path can be written to
+    if not os.access(spy_path, os.W_OK):
+        sys.exit(2)
+
+    server_sock = setup_server_connection(client_port) # Acting as server
     new_client_connection = True
     client_cmd = ''
 
     while True:
         if new_client_connection:
-            client_sock = cl.setup_client_connection(server_port) # Acting as client
+            client_sock = setup_client_connection(server_port) # Acting as client
             real_cl_sock, address = server_sock.accept()
             email = Email(None, [], [])
             authorised = False
@@ -117,7 +122,7 @@ def main():
             elif client_cmd == "RCPT":
                 email.recipients.append(decoded_cl_msg.rstrip("\r\n")[9:-1])
             elif decoded_cl_msg == ".\r\n":
-                sv.inbox_mail(email, spy_path, authorised)
+                inbox_mail(email, spy_path, authorised)
                 email = Email(None, [], [])
 
         elif server_status == "354":

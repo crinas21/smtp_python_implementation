@@ -321,6 +321,10 @@ def main():
     server_port = config_info[0]
     inbox_path = config_info[1]
 
+    # Check inbox_path can be written to
+    if not os.access(inbox_path, os.W_OK):
+        sys.exit(2)
+
     server_sock = setup_server_connection(server_port)
     server_state = 7
     authorised = False

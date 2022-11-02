@@ -285,6 +285,10 @@ def main():
     server_port = config_info[0]
     send_path = config_info[1]
 
+    # Check send_path can be read
+    if not os.access(send_path, os.R_OK):
+        sys.exit(2)
+
     emails_to_send = get_emails_to_send(send_path)
 
     for email in emails_to_send:
