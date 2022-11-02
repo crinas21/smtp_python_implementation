@@ -334,8 +334,13 @@ def main():
         msg_from_client = client_sock.recv(1024).decode('ascii')
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
-        sys.stdout.write(f"C: {msg_from_client}")
-        sys.stdout.flush()
+
+        # Write client msg to stdout even with multti-lines
+        msg_ls = msg_from_client.split("\r\n")
+        msg_ls.pop(-1)
+        for line in msg_ls:
+            sys.stdout.write(f"C: {line}\r\n")
+            sys.stdout.flush()
 
         if server_state == 3:
             email = Email(None, [], [])
