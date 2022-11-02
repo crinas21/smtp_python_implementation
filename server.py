@@ -335,7 +335,7 @@ def main():
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
 
-        # Write client msg to stdout even with multti-lines
+        # Write client msg to stdout even with multi-lines
         msg_ls = msg_from_client.split("\r\n")
         msg_ls.pop(-1)
         for line in msg_ls:

@@ -191,6 +191,8 @@ def bad_formation(contents: list[str]) -> bool:
     if not(subj_line.startswith("Subject: ") and subj_line.endswith("\n")):
         return True
 
+    return False
+
 
 def setup_client_connection(server_port: int) -> socket.socket:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
