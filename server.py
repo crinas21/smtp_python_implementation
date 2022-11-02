@@ -284,19 +284,29 @@ def process_auth(client_sock: socket.socket, parameters: str) -> bool:
     client_sock.send(response) # Send message with plaintext ascii encoded and the challenge base64 encoded
 
     msg_from_client = client_sock.recv(1024).decode('ascii') # Contains the client_answer with ID prepended
-    sys.stdout.write(f"C: {msg_from_client}\r\n")
+    if msg_from_client.rstrip("\r\n") == "*":
+        server_respond(client_sock, CODE501)
+        return False
+    printed_msg = msg_from_client.rstrip('\r\n')
+    sys.stdout.write(f"C: {printed_msg}\r\n")
     sys.stdout.flush()
-    decoded_msg = base64.b64decode(msg_from_client).decode('ascii')
+
+    try:
+        decoded_msg = base64.b64decode(msg_from_client).decode('ascii')
+    except base64.binascii.Error:
+        server_respond(client_sock, "535 Authentication credentials invalid")
+        return False
+
     new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), asc_challenge.encode('ascii'), digestmod='md5').hexdigest()
 
     msg_digest = decoded_msg.split()[1]
     msg_id = decoded_msg.split()[0]
-    if new_digest == msg_digest and PERSONAL_ID == msg_id:
-        server_respond(client_sock, "235 Authentication successful")
-        return True
-    else:
+    if new_digest != msg_digest or PERSONAL_ID != msg_id:
         server_respond(client_sock, "535 Authentication credentials invalid")
         return False
+    else:
+        server_respond(client_sock, "235 Authentication successful")
+        return True
 
 
 def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:

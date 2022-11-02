@@ -5,7 +5,6 @@ from datetime import datetime
 from dataclasses import dataclass
 from server import setup_server_connection
 from server import inbox_mail
-from client import setup_client_connection
 
 
 @dataclass(frozen=False)
@@ -60,6 +59,23 @@ def read_config() -> tuple:
         sys.exit(2)
 
     return (properties.get("server_port"), properties.get("client_port"), properties.get("spy_path"))
+
+
+def setup_client_connection(server_port: int) -> socket.socket:
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.settimeout(10)
+
+    try:
+        s.connect(("127.0.0.1", server_port))
+    except ConnectionRefusedError:
+        print("AS: Cannot establish connection")
+        sys.exit(3)
+    except TimeoutError:
+        print("AS: Cannot establish connection")
+        sys.exit(3)
+
+    return s
 
 
 def print_server_msg(msg: str) -> None:
@@ -124,6 +140,7 @@ def main():
             elif decoded_cl_msg == ".\r\n":
                 inbox_mail(email, spy_path, authorised)
                 email = Email(None, [], [])
+                authorised = False
 
         elif server_status == "354":
             client_cmd = decoded_cl_msg[0:4]

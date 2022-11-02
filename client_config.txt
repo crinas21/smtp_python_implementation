@@ -1,2 +1,2 @@
-server_port=9647
+server_port=9646
 send_path=send
