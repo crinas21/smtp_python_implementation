@@ -85,13 +85,20 @@ def setup_server_connection(server_port: int) -> socket.socket:
     return s
 
 
-def server_respond(client_sock: socket.socket, response: str) -> None:
+def server_respond(client_sock: socket.socket, response: str, desired_state: int) -> None:
     response_ls = response.split("\r\n")
     for r in response_ls:
         sys.stdout.write(f"S: {r}\r\n")
         sys.stdout.flush()
     response += "\r\n"
-    client_sock.send(response.encode('ascii'))
+    try:
+        client_sock.send(response.encode('ascii'))
+    except BrokenPipeError:
+        sys.stdout.write("S: Connection lost\r\n")
+        sys.stdout.flush()
+        client_sock.close()
+        return 7
+    return desired_state
 
 
 def inbox_mail(email: Email, inbox_path: str, authorised: bool) -> None:
@@ -193,86 +200,77 @@ def valid_address(address: str) -> bool:
 
 def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
     if not parameters.endswith("\r\n"):
-        server_respond(client_sock, CODE501)
-        return 1
+        return server_respond(client_sock, CODE501, 1)
     
     parameters = parameters.lstrip().rstrip("\r\n")
     if not valid_ip(parameters):
-        server_respond(client_sock, CODE501)
-        return 1
+        return server_respond(client_sock, CODE501, 1)
 
-    server_respond(client_sock, "250 127.0.0.1\r\n250 AUTH CRAM-MD5")
-    return 3
+    return server_respond(client_sock, "250 127.0.0.1\r\n250 AUTH CRAM-MD5", 3)
 
 
 def process_mail(client_sock: socket.socket, parameters: str, email: Email) -> int:
     if not (parameters.startswith(" FROM:<") and parameters.endswith(">\r\n")):
-        server_respond(client_sock, CODE501)
-        return 3
+        return server_respond(client_sock, CODE501, 3)
 
     if not valid_address(parameters[7:-3]):
-        server_respond(client_sock, CODE501)
-        return 3
+        return server_respond(client_sock, CODE501, 3)
 
-    server_respond(client_sock, "250 Requested mail action okay completed")
     email.sender = parameters[7:-3]
-    return 9
+    return server_respond(client_sock, "250 Requested mail action okay completed", 9)
 
 
 def process_rcpt(client_sock: socket.socket, parameters: str, email: Email) -> int:
     if not (parameters.startswith(" TO:<") and parameters.endswith(">\r\n")):
-        server_respond(client_sock, CODE501)
-        return 9
+        return server_respond(client_sock, CODE501, 9)
     
     if not valid_address(parameters[5:-3]):
-        server_respond(client_sock, CODE501)
-        return 9
+        return server_respond(client_sock, CODE501, 9)
 
-    server_respond(client_sock, "250 Requested mail action okay completed")
     email.recipients.append(parameters[5:-3])
-    return 11
+    return server_respond(client_sock, "250 Requested mail action okay completed", 11)
 
 
 def process_data(client_sock: socket.socket, parameters: str, email: Email) -> int:
     if parameters != "\r\n":
-        server_respond(client_sock, CODE501)
-        return 11
+        return server_respond(client_sock, CODE501, 11)
     else:
-        server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
+        temp_state = server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>", 11)
+        if temp_state == 7:
+            return 7
         msg_from_client = client_sock.recv(1024).decode('ascii').rstrip("\r\n")
         while msg_from_client != ".":
             sys.stdout.write(f"C: {msg_from_client}\r\n")
             sys.stdout.flush()
-            server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>")
+            temp_state = server_respond(client_sock, "354 Start mail input end <CRLF>.<CRLF>", 11)
+            if temp_state == 7:
+                return 7
             email.data_lines.append(msg_from_client)
             msg_from_client = client_sock.recv(1024).decode('ascii').rstrip("\r\n")
 
         sys.stdout.write(f"C: {msg_from_client}\r\n")
         sys.stdout.flush()
-        server_respond(client_sock, "250 Requested mail action okay completed")
-        return 3
+        return server_respond(client_sock, "250 Requested mail action okay completed", 3)
 
 
 def process_rset(client_sock: socket.socket, parameters :str, current_state: int) -> int:
     if parameters != "\r\n":
-        server_respond(client_sock, CODE501)
-        return current_state
+        return server_respond(client_sock, CODE501, current_state)
     else:
-        server_respond(client_sock, "250 Requested mail action okay completed")
-        return 3
+        return server_respond(client_sock, "250 Requested mail action okay completed", 3)
 
 
-def process_noop(client_sock: socket.socket, parameters: str) -> None:
+def process_noop(client_sock: socket.socket, parameters: str, current_state: int) -> None:
     if parameters != "\r\n":
-        server_respond(client_sock, CODE501)
+        return server_respond(client_sock, CODE501, current_state)
     else:
-        server_respond(client_sock, "250 Requested mail action okay completed")
+        return server_respond(client_sock, "250 Requested mail action okay completed", current_state)
 
 
 def process_auth(client_sock: socket.socket, parameters: str) -> bool:
     if parameters != " CRAM-MD5\r\n":
-        server_respond(client_sock, "504 Unrecognized authenticaton type")
-        return False
+        st = server_respond(client_sock, "504 Unrecognized authenticaton type", 3)
+        return (False, st)
     
     challenge = os.urandom(36)
     asc_challenge =  base64.b64encode(challenge).decode('ascii') # Decode the challenge to ascii
@@ -280,12 +278,18 @@ def process_auth(client_sock: socket.socket, parameters: str) -> bool:
     sys.stdout.write(f"S: 334 {encoded_challenge.decode('ascii')}\r\n")
     sys.stdout.flush()
     response = "334 ".encode('ascii') + encoded_challenge + "\r\n".encode('ascii') # Make plaintext ascii encoded
-    client_sock.send(response) # Send message with plaintext ascii encoded and the challenge base64 encoded
+    try:
+        client_sock.send(response) # Send message with plaintext ascii encoded and the challenge base64 encoded
+    except BrokenPipeError:
+        sys.stdout.write("S: Connection lost\r\n")
+        sys.stdout.flush()
+        client_sock.close()
+        return (False, 7)
 
     msg_from_client = client_sock.recv(1024).decode('ascii') # Contains the client_answer with ID prepended
     if msg_from_client.rstrip("\r\n") == "*":
-        server_respond(client_sock, CODE501)
-        return False
+        st = server_respond(client_sock, CODE501, 3)
+        return (False, st)
     printed_msg = msg_from_client.rstrip('\r\n')
     sys.stdout.write(f"C: {printed_msg}\r\n")
     sys.stdout.flush()
@@ -293,28 +297,26 @@ def process_auth(client_sock: socket.socket, parameters: str) -> bool:
     try:
         decoded_msg = base64.b64decode(msg_from_client).decode('ascii')
     except base64.binascii.Error:
-        server_respond(client_sock, "535 Authentication credentials invalid")
-        return False
+        st = server_respond(client_sock, "535 Authentication credentials invalid", 3)
+        return (False, st)
 
     new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), asc_challenge.encode('ascii'), digestmod='md5').hexdigest()
 
     msg_digest = decoded_msg.split()[1]
     msg_id = decoded_msg.split()[0]
     if new_digest != msg_digest or PERSONAL_ID != msg_id:
-        server_respond(client_sock, "535 Authentication credentials invalid")
-        return False
+        st = server_respond(client_sock, "535 Authentication credentials invalid", 3)
+        return (False, st)
     else:
-        server_respond(client_sock, "235 Authentication successful")
-        return True
+        st = server_respond(client_sock, "235 Authentication successful", 3)
+        return (True, st)
 
 
 def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
     if parameters != "\r\n":
-        server_respond(client_sock, CODE501)
-        return current_state
+        return server_respond(client_sock, CODE501, current_state)
     else:
-        server_respond(client_sock, "221 Service closing transmission channel")
-        return 7
+        return server_respond(client_sock, "221 Service closing transmission channel", 7)
 
 
 def sigint_handler(sig, frame) -> None:
@@ -341,10 +343,17 @@ def main():
     while True:
         if server_state == 7:
             client_sock, address = server_sock.accept()
-            server_respond(client_sock, "220 Service ready")
+            server_respond(client_sock, "220 Service ready", 1)
             server_state = 1
 
-        msg_from_client = client_sock.recv(1024).decode('ascii')
+        try:
+            msg_from_client = client_sock.recv(1024).decode('ascii')
+        except ConnectionResetError:
+            server_state = 7
+            sys.stdout.write("S: Connection lost\r\n")
+            sys.stdout.flush()
+            client_sock.close()
+            continue
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
 
@@ -366,40 +375,43 @@ def main():
             if server_state == 3:
                 server_state = process_mail(client_sock, parameters, email)
             else:
-                server_respond(client_sock, CODE503)
+                server_state = server_respond(client_sock, CODE503, 3)
 
         elif command == "RCPT":
             if server_state == 9 or server_state == 11:
                 server_state = process_rcpt(client_sock, parameters, email)
             else:
-                server_respond(client_sock, CODE503)
+                server_state = server_respond(client_sock, CODE503, 9)
 
         elif command == "DATA":
             if server_state == 11:
                 server_state = process_data(client_sock, parameters, email)
                 inbox_mail(email, inbox_path, authorised)
             else:
-                server_respond(client_sock, CODE503)
+                server_state = server_respond(client_sock, CODE503, 11)
 
         elif command == "RSET":
             server_state = process_rset(client_sock, parameters, server_state)
             authorised = False
 
         elif command == "NOOP":
-            process_noop(client_sock, parameters)
+            server_state = process_noop(client_sock, parameters)
 
         elif command == "AUTH":
             if server_state == 3:
-                authorised = process_auth(client_sock, parameters)
+                auth_info = process_auth(client_sock, parameters)
+                authorised = auth_info[0]
+                server_state = auth_info[1]
             else:
-                server_respond(client_sock, CODE503)
+                server_state = server_respond(client_sock, CODE503, 3)
 
         elif command == "QUIT":
             server_state = process_quit(client_sock, parameters, server_state)
             authorised = False
 
         else:
-            server_respond(client_sock, CODE500)
+            if server_state != 7:
+                server_state = server_respond(client_sock, CODE500, server_state)
 
 
 if __name__ == '__main__':
