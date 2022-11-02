@@ -201,7 +201,7 @@ def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
         server_respond(client_sock, CODE501)
         return 1
 
-    server_respond(client_sock, "250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5")
+    server_respond(client_sock, "250 127.0.0.1\r\n250 AUTH CRAM-MD5")
     return 3
 
 
