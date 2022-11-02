@@ -59,6 +59,7 @@ def print_server_msg(msg: str) -> None:
     for line in msg_ls:
         sys.stdout.write(f"S: {line}\r\n")
         sys.stdout.flush()
+    for line in msg_ls:
         sys.stdout.write(f"AC: {line}\r\n")
         sys.stdout.flush()
 
