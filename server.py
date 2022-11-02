@@ -18,7 +18,6 @@ class Email:
 PERSONAL_ID = '166FB8'
 PERSONAL_SECRET = 'ec3d3b986eec9b7ad74e06213350ebd3'
 
-CODE220 = "220 Service ready"
 CODE235 = "235 Authentication successful"
 CODE354 = "354 Start mail input end <CRLF>.<CRLF>"
 CODE500 = "500 Syntax error command unrecognized"
@@ -329,7 +328,7 @@ def main():
     while True:
         if server_state == 7:
             client_sock, address = server_sock.accept()
-            server_respond(client_sock, CODE220)
+            server_respond(client_sock, "220 Service ready")
             server_state = 1
 
         msg_from_client = client_sock.recv(1024).decode('ascii')
