@@ -86,8 +86,10 @@ def setup_server_connection(server_port: int) -> socket.socket:
 
 
 def server_respond(client_sock: socket.socket, response: str) -> None:
-    sys.stdout.write(f"S: {response}\r\n")
-    sys.stdout.flush()
+    response_ls = response.split("\r\n")
+    for r in response_ls:
+        sys.stdout.write(f"S: {r}\r\n")
+        sys.stdout.flush()
     response += "\r\n"
     client_sock.send(response.encode('ascii'))
 
@@ -199,10 +201,7 @@ def process_ehlo(client_sock: socket.socket, parameters: str) -> int:
         server_respond(client_sock, CODE501)
         return 1
 
-    sys.stdout.write(f"S: 250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5\r\n")
-    sys.stdout.flush()
-    msg = f"250 127.0.0.1\r\n250 AUTH CRAM-MD5\r\n"
-    client_sock.send(msg.encode('ascii'))
+    server_respond(client_sock, "250 127.0.0.1\r\nS: 250 AUTH CRAM-MD5")
     return 3
 
 
