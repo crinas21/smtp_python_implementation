@@ -1,0 +1,6 @@
+EHLO 127.0.0.1
+MAIL FROM:<b@b.b>
+RCPT TO:<a@a.a>
+DATA
+.
+QUIT

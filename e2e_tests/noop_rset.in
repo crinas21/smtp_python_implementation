@@ -1,0 +1,9 @@
+EHLO 127.0.0.1
+NOOP cool
+NOOP
+MAIL FROM:<b@b.b>
+RCPT FROM:<a@a.a>
+RSET asdjnasjkd
+RSET
+MAIL FROM:<b@b.b>
+QUIT

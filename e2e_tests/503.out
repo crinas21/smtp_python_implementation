@@ -1,0 +1,32 @@
+S: 220 Service ready
+C: MAIL FROM:<bob@example.org>
+S: 503 Bad sequence of commands
+C: EHLO 127.0.0.1
+S: 250 127.0.0.1
+S: 250 AUTH CRAM-MD5
+C: RCPT TO:<bob@example.org>
+S: 503 Bad sequence of commands
+C: MAIL FROM:<b@b.b>
+S: 250 Requested mail action okay completed
+C: DATA
+S: 503 Bad sequence of commands
+C: AUTH
+S: 503 Bad sequence of commands
+C: RCPT TO:<a@a.a>
+S: 250 Requested mail action okay completed
+C: MAIL FROM<c@c.c>
+S: 503 Bad sequence of commands
+C: DATA
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: Date: Mon, 14 Sep 1987 23:07:00 +1000
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: Subject: Hi
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: Hello, there
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: General Kenobi
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: .
+S: 250 Requested mail action okay completed
+C: QUIT
+S: 221 Service closing transmission channel

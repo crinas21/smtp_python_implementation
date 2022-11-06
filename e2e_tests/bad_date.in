@@ -1,0 +1,9 @@
+EHLO 127.0.0.1
+MAIL FROM:<b@b.b>
+RCPT TO:<a@a.a>
+DATA
+Date: Monday February 18 2022 +1000
+Subject: bad date
+the date is bad
+.
+QUIT

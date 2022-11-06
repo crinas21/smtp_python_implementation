@@ -2,10 +2,10 @@ import os
 import socket
 import sys
 from datetime import datetime
-import server
 
 '''
-Used for testing manual input into the server.
+Used to take the text from all .in files in e2e_tests
+and send to server.py for testing.
 '''
 
 
@@ -79,28 +79,37 @@ def write_msg_from_server(msg: str) -> None:
 def main():
     config_info = read_config()
     server_port = config_info[0]
-    send_path = "send"
+    send_path = config_info[1]
+
+    in_files = []
+    for file in os.listdir("e2e_tests"):
+        if file.endswith(".in"):
+            in_files.append(os.path.join("e2e_tests", file))
 
     client_sock = setup_client_connection(server_port)
 
-    quit = False
-    while not quit:
-        try:
-            msg_from_server = client_sock.recv(1024).decode()
-        except ConnectionResetError:
-            sys.stdout.write("C: Connection lost\r\n")
-            sys.stdout.flush()
-            sys.exit(3)
-        write_msg_from_server(msg_from_server)
-        msg_to_server = input("C: ").rstrip('\n') + "\r\n"
-        with open('e2e_tests/'+sys.argv[2]+'.in', 'a') as fobj:
-            fobj.write(msg_to_server)
-        try:
-            client_sock.send(msg_to_server.encode())
-        except BrokenPipeError:
-            sys.stdout.write("C: Connection lost\r\n")
-            sys.stdout.flush()
-            sys.exit(3)
+    for file in in_files:
+        client_sock = setup_client_connection(server_port)
+        fobj = open(file, "r")
+        lines = fobj.readlines()
+        fobj.close()
+
+        for line in lines:
+            try:
+                msg_from_server = client_sock.recv(1024).decode()
+            except ConnectionResetError:
+                sys.stdout.write("C: Connection lost\r\n")
+                sys.stdout.flush()
+                sys.exit(3)
+            write_msg_from_server(msg_from_server)
+
+            msg_to_server = line.rstrip("\n") + "\r\n"
+            try:
+                client_sock.send(msg_to_server.encode())
+            except BrokenPipeError:
+                sys.stdout.write("C: Connection lost\r\n")
+                sys.stdout.flush()
+                sys.exit(3)
 
 
 if __name__ == '__main__':

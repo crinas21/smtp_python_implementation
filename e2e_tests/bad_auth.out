@@ -1,0 +1,15 @@
+S: 220 Service ready
+C: EHLO 127.0.0.1
+S: 250 127.0.0.1
+S: 250 AUTH CRAM-MD5
+C: AUTH CRAM
+S: 504 Unrecognized authenticaton type
+C: AUTH CRAM-MD5
+S: 334 blBGMTdqZ3FaVXFFd3o5dlpYMHc3QUo3WUlSZEJWbXowMHBOcEJrbjZoeHhHcUkw
+C: randombadhash
+S: 535 Authentication credentials invalid
+C: AUTH CRAM-MD5
+S: 334 N0krNVdER0RpL1l5RHR4YVBJNVF2QktoODR1aVRIN3pMQVUvOFdQblNwM0E1c082
+S: 501 Syntax error in parameters or arguments
+C: QUIT
+S: 221 Service closing transmission channel

@@ -1,0 +1,5 @@
+From: <b@b.b>
+To: <a@a.a>
+Date: Monday February 18 2022 +1000
+Subject: bad date
+the date is bad

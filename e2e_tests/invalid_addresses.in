@@ -1,0 +1,13 @@
+EHLO 127.0.0.1
+MAIL FROM:<b.b>
+MAIL FROM:<@>
+MAIL FROM:<b"b@b.b>
+MAIL FROM:<b@.b>
+MAIL FROM:<.b@b.b>
+MAIL FROM:<b.-b@b.b>
+MAIL FROM:<b.b@b.>
+MAIL FROM:<b.b@b.b"b>
+MAIL FROM:<b.b@[127.0.1]>
+MAIL FROM:<b.b@b.-b>
+MAIL FROM:<b.b@b.>
+QUIT

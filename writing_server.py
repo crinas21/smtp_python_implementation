@@ -8,6 +8,11 @@ import hmac
 import base64
 
 
+'''
+Writes output to .out files in e2e. Delete after
+'''
+
+
 @dataclass(frozen=False)
 class Email:
     sender: str
@@ -36,7 +41,7 @@ def read_config() -> tuple:
 
     server_port_given = False
     inbox_path_given = False
-    properties = {} # Key is left hand side of "=" and value is right hand side
+    properties = {}
     with open(sys.argv[1], "r") as fobj:
         for property in fobj:
             property = property.rstrip('\n')
@@ -136,12 +141,10 @@ def valid_ip(ip: str) -> bool:
 
 
 def valid_address(address: str) -> bool:
-    # Check there is only one @
     split_addr = address.split('@')
     if len(split_addr) != 2:
         return False
 
-    # Check there is soemthing on the left side of the @
     dot_string = split_addr[0]
     if len(dot_string) < 1:
         return False
@@ -292,7 +295,6 @@ def process_auth(client_sock: socket.socket, parameters: str) -> bool:
         server_respond(client_sock, "535 Authentication credentials invalid")
         return False
 
-    # Calculate the server's version of the digest using the personal secret and challenge sent to the client
     new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), asc_challenge.encode('ascii'), digestmod='md5').hexdigest()
 
     msg_digest = decoded_msg.split()[1]
@@ -315,116 +317,118 @@ def process_quit(client_sock: socket.socket, parameters: str, current_state: int
 
 
 def main():
-    def sigint_handler(sig, frame) -> None:
-        try:
-            client_sock.send("421 Service not available, closing transmission\r\n".encode('ascii'))
-        except UnboundLocalError:
-            pass
-        except NameError:
-            pass
-        except OSError:
-            pass
-        sys.stdout.write("S: SIGINT received, closing\r\n")
-        sys.stdout.flush()
-        sys.exit(0)
-    signal.signal(signal.SIGINT, sigint_handler)
+    with open('e2e_tests/'+sys.argv[2]+'.out', 'w') as sys.stdout:
 
-    config_info = read_config()
-    server_port = config_info[0]
-    inbox_path = config_info[1]
-
-    # Check inbox_path can be written to
-    if not os.access(inbox_path, os.W_OK):
-        sys.exit(2)
-
-    server_sock = setup_server_connection(server_port)
-    server_state = 7
-    authorised = False
-    
-    while True:
-        if server_state == 7:
-            client_sock, address = server_sock.accept()
-            server_respond(client_sock, "220 Service ready")
-            server_state = 1
-
-        try:
-            msg_from_client = client_sock.recv(1024).decode('ascii')
-        except ConnectionResetError:
-                sys.stdout.write("S: Connection lost\r\n")
-                sys.stdout.flush()
-                client_sock.close()
-                server_state = 7
-                continue
-        command = msg_from_client[0:4]
-        parameters = msg_from_client[4:]
-
-        # Write client msg to stdout even with multi-lines
-        msg_ls = msg_from_client.split("\r\n")
-        msg_ls.pop(-1)
-        for line in msg_ls:
-            sys.stdout.write(f"C: {line}\r\n")
-            sys.stdout.flush()
-
-        if server_state == 3:
-            email = Email(None, [], [])
-
-        if command == "EHLO":
-            server_state = process_ehlo(client_sock, parameters)
-            authorised = False
-
-        elif command == "MAIL":
-            if server_state == 3:
-                server_state = process_mail(client_sock, parameters, email)
-            else:
-                server_respond(client_sock, CODE503)
-
-        elif command == "RCPT":
-            if server_state == 9 or server_state == 11:
-                server_state = process_rcpt(client_sock, parameters, email)
-            else:
-                server_respond(client_sock, CODE503)
-
-        elif command == "DATA":
-            if server_state == 11:
-                server_state = process_data(client_sock, parameters, email)
-                if server_state == 3:
-                        inbox_mail(email, inbox_path, authorised)
-            else:
-                server_respond(client_sock, CODE503)
-
-        elif command == "RSET":
-            server_state = process_rset(client_sock, parameters, server_state)
-            authorised = False
-
-        elif command == "NOOP":
-            process_noop(client_sock, parameters)
-
-        elif command == "AUTH":
-            if server_state == 3:
-                authorised = process_auth(client_sock, parameters)
-            else:
-                server_respond(client_sock, CODE503)
-
-        elif command == "QUIT":
-            server_state = process_quit(client_sock, parameters, server_state)
-            authorised = False
-
-        elif command == '':
+        def sigint_handler(sig, frame) -> None:
             try:
-                client_sock.send("test data\r\n".encode('ascii'))
-            except BrokenPipeError:
-                sys.stdout.write("S: Connection lost\r\n")
-                sys.stdout.flush()
-                client_sock.close()
-                server_state = 7
-            except ConnectionResetError:
-                sys.stdout.write("S: Connection lost\r\n")
-                sys.stdout.flush()
-                client_sock.close()
-                server_state = 7
+                client_sock.send("421 Service not available, closing transmission\r\n".encode('ascii'))
+            except UnboundLocalError:
+                pass
+            except NameError:
+                pass
+            except OSError:
+                pass
+            sys.stdout.write("S: SIGINT received, closing\r\n")
+            sys.stdout.flush()
+            sys.exit(0)
+        signal.signal(signal.SIGINT, sigint_handler)
 
-        else:
-            server_respond(client_sock, CODE500)
+        config_info = read_config()
+        server_port = config_info[0]
+        inbox_path = config_info[1]
+
+        # Check inbox_path can be written to
+        if not os.access(inbox_path, os.W_OK):
+            sys.exit(2)
+
+        server_sock = setup_server_connection(server_port)
+        server_state = 7
+        authorised = False
+        
+        while True:
+            if server_state == 7:
+                client_sock, address = server_sock.accept()
+                server_respond(client_sock, "220 Service ready")
+                server_state = 1
+
+            try:
+                msg_from_client = client_sock.recv(1024).decode('ascii')
+            except ConnectionResetError:
+                    sys.stdout.write("S: Connection lost\r\n")
+                    sys.stdout.flush()
+                    client_sock.close()
+                    server_state = 7
+                    continue
+            command = msg_from_client[0:4]
+            parameters = msg_from_client[4:]
+
+            # Write client msg to stdout even with multi-lines
+            msg_ls = msg_from_client.split("\r\n")
+            msg_ls.pop(-1)
+            for line in msg_ls:
+                sys.stdout.write(f"C: {line}\r\n")
+                sys.stdout.flush()
+
+            if server_state == 3:
+                email = Email(None, [], [])
+
+            if command == "EHLO":
+                server_state = process_ehlo(client_sock, parameters)
+                authorised = False
+
+            elif command == "MAIL":
+                if server_state == 3:
+                    server_state = process_mail(client_sock, parameters, email)
+                else:
+                    server_respond(client_sock, CODE503)
+
+            elif command == "RCPT":
+                if server_state == 9 or server_state == 11:
+                    server_state = process_rcpt(client_sock, parameters, email)
+                else:
+                    server_respond(client_sock, CODE503)
+
+            elif command == "DATA":
+                if server_state == 11:
+                    server_state = process_data(client_sock, parameters, email)
+                    if server_state == 3:
+                        inbox_mail(email, inbox_path, authorised)
+                else:
+                    server_respond(client_sock, CODE503)
+
+            elif command == "RSET":
+                server_state = process_rset(client_sock, parameters, server_state)
+                authorised = False
+
+            elif command == "NOOP":
+                process_noop(client_sock, parameters)
+
+            elif command == "AUTH":
+                if server_state == 3:
+                    authorised = process_auth(client_sock, parameters)
+                else:
+                    server_respond(client_sock, CODE503)
+
+            elif command == "QUIT":
+                server_state = process_quit(client_sock, parameters, server_state)
+                authorised = False
+
+            elif command == '':
+                try:
+                    client_sock.send("test data\r\n".encode('ascii'))
+                except BrokenPipeError:
+                    sys.stdout.write("S: Connection lost\r\n")
+                    sys.stdout.flush()
+                    client_sock.close()
+                    server_state = 7
+                except ConnectionResetError:
+                    sys.stdout.write("S: Connection lost\r\n")
+                    sys.stdout.flush()
+                    client_sock.close()
+                    server_state = 7
+
+            else:
+                server_respond(client_sock, CODE500)
 
 if __name__ == '__main__':
     main()

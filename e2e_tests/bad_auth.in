@@ -1,0 +1,7 @@
+EHLO 127.0.0.1
+AUTH CRAM
+AUTH CRAM-MD5
+randombadhash
+AUTH CRAM-MD5
+*
+QUIT

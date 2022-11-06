@@ -1,0 +1,12 @@
+Traceback (most recent call last):
+  File "/Users/cohenrinas/Desktop/Uni Year 1/INFO1112/Assignment_3/server.py", line 427, in <module>
+    main()
+  File "/Users/cohenrinas/Desktop/Uni Year 1/INFO1112/Assignment_3/server.py", line 343, in main
+    client_sock, address = server_sock.accept()
+  File "/usr/local/Cellar/python@3.10/3.10.7/Frameworks/Python.framework/Versions/3.10/lib/python3.10/socket.py", line 293, in accept
+    fd, addr = self._accept()
+  File "/Users/cohenrinas/Desktop/Uni Year 1/INFO1112/Assignment_3/server.py", line 325, in sigint_handler
+    sys.stdout.flush()
+BrokenPipeError: [Errno 32] Broken pipe
+Exception ignored in: <_io.TextIOWrapper name='<stdout>' mode='w' encoding='utf-8'>
+BrokenPipeError: [Errno 32] Broken pipe

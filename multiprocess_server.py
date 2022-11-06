@@ -57,18 +57,9 @@ def read_config() -> tuple:
                     sys.exit(2)
                 inbox_path_given = True
 
-            if property_ls[0] == "client_port":
-                try:
-                    property_ls[1] = int(property_ls[1])
-                except ValueError:
-                    sys.exit(2)
-                if property_ls[1] <= 1024:
-                    sys.exit(2)
-
             properties.update({property_ls[0]: property_ls[1]})
         
-    if not server_port_given or not inbox_path_given or \
-            properties.get("server_port") == properties.get("client_port"):
+    if not server_port_given or not inbox_path_given:
         sys.exit(2)
 
     return (properties.get("server_port"), properties.get("inbox_path"))
@@ -105,13 +96,16 @@ def inbox_mail(email: Email, inbox_path: str, prefix: str, authorised: bool) -> 
         email_txt += data + "\n"
     email_txt = email_txt
 
-    if email.data_lines[0].startswith("Date: "):
-        date = email.data_lines[0][6:]
-        try:
-            date_format = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %z')
-            timestamp = str(datetime.timestamp(date_format)).split(".")[0]
-            filename = timestamp + ".txt"
-        except ValueError:
+    if len(email.data_lines) > 0:
+        if email.data_lines[0].startswith("Date: "):
+            date = email.data_lines[0][6:]
+            try:
+                date_format = datetime.strptime(date, '%a, %d %b %Y %H:%M:%S %z')
+                timestamp = str(datetime.timestamp(date_format)).split(".")[0]
+                filename = timestamp + ".txt"
+            except ValueError:
+                filename = "unknown.txt"
+        else:
             filename = "unknown.txt"
     else:
         filename = "unknown.txt"
@@ -403,7 +397,8 @@ def main():
         elif command == "DATA":
             if server_state == 11:
                 server_state = process_data(client_sock, prefix, parameters, email)
-                inbox_mail(email, inbox_path, prefix, authorised)
+                if server_state == 3:
+                        inbox_mail(email, inbox_path, authorised)
             else:
                 server_respond(client_sock, prefix, CODE503)
 

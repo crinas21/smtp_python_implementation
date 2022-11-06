@@ -1,0 +1,15 @@
+EHLO 127.0.0.1 hello
+EHLO 127.0.0.1
+MAIL
+MAIL FROM:<b@b.b
+MAIL FROM:<b@b.b>
+RCPT TO:a@a.a>
+RCPT TO:<a@a.a>
+DATA random
+DATA
+Date: Mon, 1 Sep 1987 23:00:00 +1000
+Subject: Ye bru
+pain
+.
+QUIT now
+QUIT

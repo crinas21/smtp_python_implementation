@@ -1,0 +1,32 @@
+S: 220 Service ready
+C: EHLO 127.0.0.1 hello
+S: 501 Syntax error in parameters or arguments
+C: EHLO 127.0.0.1
+S: 250 127.0.0.1
+S: 250 AUTH CRAM-MD5
+C: MAIL
+S: 501 Syntax error in parameters or arguments
+C: MAIL FROM:<b@b.b
+S: 501 Syntax error in parameters or arguments
+C: MAIL FROM:<b@b.b>
+S: 250 Requested mail action okay completed
+C: RCPT TO:a@a.a>
+S: 501 Syntax error in parameters or arguments
+C: RCPT TO:<a@a.a>
+S: 250 Requested mail action okay completed
+C: DATA random
+S: 501 Syntax error in parameters or arguments
+C: DATA
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: Date: Mon, 1 Sep 1987 23:00:00 +1000
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: Subject: Ye bru
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: pain
+S: 354 Start mail input end <CRLF>.<CRLF>
+C: .
+S: 250 Requested mail action okay completed
+C: QUIT now
+S: 501 Syntax error in parameters or arguments
+C: QUIT
+S: 221 Service closing transmission channel
