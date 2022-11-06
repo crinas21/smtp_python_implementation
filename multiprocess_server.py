@@ -398,7 +398,7 @@ def main():
             if server_state == 11:
                 server_state = process_data(client_sock, prefix, parameters, email)
                 if server_state == 3:
-                        inbox_mail(email, inbox_path, authorised)
+                        inbox_mail(email, inbox_path, prefix, authorised)
             else:
                 server_respond(client_sock, prefix, CODE503)
 
