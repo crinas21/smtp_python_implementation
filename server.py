@@ -321,9 +321,13 @@ def main():
     def sigint_handler(sig, frame) -> None:
         try:
             client_sock.send("421 Service not available, closing transmission\r\n".encode('ascii'))
+            client_sock.close()
+            server_sock.close()
         except UnboundLocalError:
             pass
         except NameError:
+            pass
+        except OSError:
             pass
         sys.stdout.write("S: SIGINT received, closing\r\n")
         sys.stdout.flush()
@@ -348,7 +352,14 @@ def main():
             server_respond(client_sock, "220 Service ready")
             server_state = 1
 
-        msg_from_client = client_sock.recv(1024).decode('ascii')
+        try:
+            msg_from_client = client_sock.recv(1024).decode('ascii')
+        except ConnectionResetError:
+                sys.stdout.write("S: Connection lost\r\n")
+                sys.stdout.flush()
+                client_sock.close()
+                server_state = 7
+                continue
         command = msg_from_client[0:4]
         parameters = msg_from_client[4:]
 
