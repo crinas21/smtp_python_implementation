@@ -94,7 +94,7 @@ def server_respond(client_sock: socket.socket, prefix: str, response: str) -> No
     client_sock.send(response.encode('ascii'))
 
 
-def inbox_mail(email: Email, inbox_path: str, authorised: bool) -> None:
+def inbox_mail(email: Email, inbox_path: str, prefix: str, authorised: bool) -> None:
     email_txt = f"From: <{email.sender}>\nTo: "
 
     for rcpt in email.recipients:
@@ -119,7 +119,7 @@ def inbox_mail(email: Email, inbox_path: str, authorised: bool) -> None:
     if authorised:
         filename = "auth." + filename
 
-    filename = inbox_path + "/" + filename
+    filename = inbox_path + "/" + prefix + filename
     fobj = open(filename, "w")
     fobj.write(email_txt)
     fobj.close()
@@ -331,7 +331,10 @@ def main():
             pass
         except OSError:
             pass
-        sys.stdout.write(f"{prefix}S: SIGINT received, closing\r\n")
+        try:
+            sys.stdout.write(f"{prefix}S: SIGINT received, closing\r\n")
+        except NameError:
+            sys.stdout.write(f"[{os.getpid()}][{client_num}]S: SIGINT received, closing\r\n")
         sys.stdout.flush()
         sys.exit(0)
     signal.signal(signal.SIGINT, sigint_handler)
@@ -400,7 +403,7 @@ def main():
         elif command == "DATA":
             if server_state == 11:
                 server_state = process_data(client_sock, prefix, parameters, email)
-                inbox_mail(email, inbox_path, authorised)
+                inbox_mail(email, inbox_path, prefix, authorised)
             else:
                 server_respond(client_sock, prefix, CODE503)
 
