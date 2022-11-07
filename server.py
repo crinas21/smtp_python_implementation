@@ -293,7 +293,8 @@ def process_auth(client_sock: socket.socket, parameters: str) -> bool:
         return False
 
     # Calculate the server's version of the digest using the personal secret and challenge sent to the client
-    new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), asc_challenge.encode('ascii'), digestmod='md5').hexdigest()
+    new_digest = hmac.new(PERSONAL_SECRET.encode('ascii'), 
+                asc_challenge.encode('ascii'), digestmod='md5').hexdigest()
 
     msg_digest = decoded_msg.split()[1]
     msg_id = decoded_msg.split()[0]
@@ -305,7 +306,8 @@ def process_auth(client_sock: socket.socket, parameters: str) -> bool:
         return True
 
 
-def process_quit(client_sock: socket.socket, parameters: str, current_state: int) -> int:
+def process_quit(client_sock: socket.socket, parameters: str, 
+                                    current_state: int) -> int:
     if parameters != "\r\n":
         server_respond(client_sock, CODE501)
         return current_state
@@ -317,7 +319,8 @@ def process_quit(client_sock: socket.socket, parameters: str, current_state: int
 def main():
     def sigint_handler(sig, frame) -> None:
         try:
-            client_sock.send("421 Service not available, closing transmission\r\n".encode('ascii'))
+            client_sock.send("421 Service not available, closing \
+                            transmission\r\n".encode('ascii'))
         except UnboundLocalError:
             pass
         except NameError:

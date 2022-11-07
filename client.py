@@ -149,13 +149,6 @@ def bad_formation(contents: list[str]) -> bool:
     if len(contents) < 5:
         return True
 
-    # Check file is ascii encoded
-    # for line in contents:
-    #     try:
-    #         line.decode('ascii')
-    #     except UnicodeDecodeError:
-    #         return True
-
     from_line = contents[0]
     to_line = contents[1]
     date_line = contents[2]
@@ -240,6 +233,7 @@ def print_then_send_to_server(client_sock: socket.socket, msg: str) -> None:
 
 def authenticate(client_sock: socket.socket) -> None:
     print_then_send_to_server(client_sock, "AUTH CRAM-MD5")
+
     server_msg = receive_msg_from_server(client_sock)
     challenge = server_msg.split()[1].rstrip("\r\n")
     decoded_challenge = base64.b64decode(challenge)
@@ -247,8 +241,10 @@ def authenticate(client_sock: socket.socket) -> None:
                         decoded_challenge, digestmod='md5').hexdigest()
     digest = PERSONAL_ID + " " + digest + "\r\n"
     client_answer = base64.b64encode(digest.encode('ascii'))
+
     sys.stdout.write(f"C: {client_answer.decode('ascii')}\r\n")
     sys.stdout.flush()
+
     client_sock.send(client_answer)
     receive_msg_from_server(client_sock)
 
@@ -273,9 +269,13 @@ def send_data(client_sock: socket.socket, data: list[str]) -> None:
     receive_msg_from_server(client_sock)
     for i in range(len(data)):
         data[i] = data[i].rstrip('\n')
+
+    # Send all lines of data to the server.
     for section in data:
         print_then_send_to_server(client_sock, section)
         receive_msg_from_server(client_sock)
+
+    # When all lines of data are sent, finally send a .
     print_then_send_to_server(client_sock, ".")
     receive_msg_from_server(client_sock)
 
