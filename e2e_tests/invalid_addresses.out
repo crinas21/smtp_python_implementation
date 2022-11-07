@@ -22,7 +22,9 @@ C: MAIL FROM:<b.b@[127.0.1]>
 S: 501 Syntax error in parameters or arguments
 C: MAIL FROM:<b.b@b.-b>
 S: 501 Syntax error in parameters or arguments
-C: MAIL FROM:<b.b@b.>
+C: MAIL FROM:<b@b.b>
+S: 250 Requested mail action okay completed
+C: RCPT TO:<aksjbdjkasbdfkjb>
 S: 501 Syntax error in parameters or arguments
 C: QUIT
 S: 221 Service closing transmission channel

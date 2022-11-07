@@ -409,7 +409,7 @@ def main():
             server_state = process_quit(client_sock, parameters, server_state)
             authorised = False
 
-        elif command == '':
+        elif command == '': # This occurs when client connection is lost and is just sending empty packets
             try:
                 client_sock.send("test data\r\n".encode('ascii'))
             except BrokenPipeError:
